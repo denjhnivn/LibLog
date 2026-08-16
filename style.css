@@ -1,0 +1,351 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+    --blue: #5c87f4;
+    --ink: #293d63;
+    --muted: #62708a;
+}
+
+* { box-sizing: border-box; }
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 24px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--ink);
+    font-family: 'DM Sans', Arial, sans-serif;
+    background:
+        linear-gradient(90deg, transparent 0 13.5%, #f5f6fa 13.5% 36%, transparent 36% 100%),
+        linear-gradient(180deg, #eaf0fd 0 36%, #f8f8fa 36% 67%, #edf2fc 67%);
+}
+
+body::before,
+body::after {
+    position: fixed;
+    z-index: -1;
+    display: block;
+    content: '';
+    background: #dce7fa;
+}
+
+body::before { width: 13.5vw; height: 9vw; top: 38%; left: 0; }
+body::after { width: 14.5vw; height: 13.5vw; right: 0; bottom: 28%; }
+
+.wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: min(850px, 100%);
+    min-height: 530px;
+    background: #fff;
+    overflow: visible;
+    border-radius: 15px;
+    box-shadow: 0 14px 32px rgb(61 82 124 / 16%);
+}
+
+.login-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 50px 48px;
+    background: rgb(255 255 255 / 96%);
+    border-radius: 15px 0 0 15px;
+}
+
+.intro { margin: 0 0 28px; }
+h1 {
+    margin: 0 0 14px;
+    color: var(--blue);
+    font-family: 'Barlow Condensed', Impact, sans-serif;
+    font-size: clamp(2.2rem, 3.2vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -.4px;
+}
+
+.intro p, .checkin { margin: 0; color: var(--muted); font-size: 1rem; }
+
+form { display: grid; gap: 12px; }
+.field { position: relative; }
+label {
+    position: absolute;
+    z-index: 1;
+    top: 27px;
+    left: 17px;
+    display: grid;
+    transform: translateY(-50%);
+    place-items: center;
+}
+label svg { width: 19px; height: 19px; fill: #7590c8; }
+label img {
+    width: 19px;
+    height: 19px;
+    filter: invert(52%) sepia(81%) saturate(400%) hue-rotate(185deg) brightness(86%) contrast(104%);
+}
+input,
+select {
+    width: 100%;
+    height: 54px;
+    padding: 0 16px 0 50px;
+    border: 1px solid #d7dfed;
+    border-radius: 5px;
+    outline: none;
+    color: var(--ink);
+    font: inherit;
+    background: #fff;
+    transition: border-color .2s, box-shadow .2s;
+}
+input::placeholder { color: #96a3bb; }
+input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgb(92 135 244 / 15%); }
+.plain-field input { padding-left: 16px; }
+
+select {
+    padding: 0 48px 0 16px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    color: var(--ink);
+}
+select:invalid { color: #96a3bb; }
+select.select-placeholder { color: #96a3bb; }
+select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgb(92 135 244 / 15%); }
+select option { color: var(--ink); background: #fff; }
+select option:disabled { color: #96a3bb; }
+
+/*
+   The PC picker below is a styled button + list (not a real <select>),
+   because a real <select>'s open dropdown can't be restyled in
+   Chrome/Edge on Windows. This gives it rounded corners, a blue hover
+   state, and a gray placeholder like every other field in the design.
+*/
+.pc-select {
+    width: 100%;
+    height: 54px;
+    margin: 0;
+    padding: 0 48px 0 50px;
+    border: 1px solid #d7dfed;
+    border-radius: 5px;
+    color: #96a3bb;
+    text-align: left;
+    font: inherit;
+    font-weight: 400;
+    box-shadow: none;
+    background: #fff;
+}
+.pc-select:focus-visible {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgb(92 135 244 / 15%);
+}
+.pc-select-value.has-value { color: var(--ink); }
+
+.pc-field::after {
+    position: absolute;
+    top: 27px;
+    right: 17px;
+    width: 8px;
+    height: 8px;
+    content: '';
+    pointer-events: none;
+    border-right: 2px solid #7590c8;
+    border-bottom: 2px solid #7590c8;
+    transform: translateY(-65%) rotate(45deg);
+}
+.pc-field:focus-within::after { border-color: var(--blue); }
+
+/*
+   The list that pops open when "Select PC" is clicked. Because it's a
+   plain <div>, not a native browser dropdown, we can fully round its
+   corners and control its hover color — which a real <select> would
+   not allow on Chrome/Edge on Windows.
+*/
+.pc-options {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    display: grid;
+    overflow: hidden;
+    border: 1px solid #d7dfed;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12px 24px rgb(61 82 124 / 16%);
+}
+.pc-options[hidden] { display: none; }
+.pc-option {
+    width: 100%;
+    height: 40px;
+    margin: 0;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 0;
+    color: var(--ink);
+    text-align: left;
+    font: 500 .92rem 'DM Sans', sans-serif;
+    box-shadow: none;
+    background: transparent;
+}
+.pc-option:hover,
+.pc-option:focus-visible {
+    outline: none;
+    color: #fff;
+    background: var(--blue);
+}
+.pc-options[hidden] { display: none; }
+.pc-option {
+    height: 40px;
+    margin: 0;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 7px;
+    color: var(--ink);
+    text-align: left;
+    font: 500 .92rem 'DM Sans', sans-serif;
+    box-shadow: none;
+    background: transparent;
+}
+.pc-option:hover,
+.pc-option:focus-visible {
+    outline: none;
+    color: #fff;
+    background: var(--blue);
+}
+
+.field-error {
+    display: none;
+    margin: 6px 0 0;
+    color: #d83b4b;
+    font-size: .78rem;
+    font-weight: 500;
+}
+.field.is-invalid label svg { fill: #d83b4b; }
+.field.is-invalid input {
+    border-color: #d83b4b;
+    background: #fff8f8;
+    box-shadow: 0 0 0 3px rgb(216 59 75 / 12%);
+}
+
+.field.is-invalid select {
+    border-color: #d83b4b;
+    background: #fff8f8;
+    box-shadow: 0 0 0 3px rgb(216 59 75 / 12%);
+}
+.field.is-invalid .pc-select {
+    border-color: #d83b4b;
+    background: #fff8f8;
+    box-shadow: 0 0 0 3px rgb(216 59 75 / 12%);
+}
+.field.is-invalid .pc-select-value { color: #d83b4b; }
+.field.pc-field.is-invalid::after { border-color: #d83b4b; }
+.field.is-invalid input::placeholder { color: #d83b4b; }
+.field.is-invalid .field-error { display: block; }
+.form-error {
+    display: none;
+    margin: 4px 0 0;
+    color: #d83b4b;
+    text-align: center;
+    font-size: .82rem;
+    font-weight: 600;
+}
+.form-error.is-visible { display: block; }
+.form-success {
+    display: none;
+    margin: 4px 0 0;
+    color: #27824e;
+    text-align: center;
+    font-size: .82rem;
+    font-weight: 600;
+}
+.form-success.is-visible { display: block; }
+button {
+    width: 100%;
+    height: 52px;
+    margin-top: 8px;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #fff;
+    font: 600 1rem 'DM Sans', sans-serif;
+    background: var(--blue);
+    box-shadow: 0 7px 15px rgb(92 135 244 / 25%);
+}
+.checkin { margin-top: 21px; text-align: center; font-size: .88rem; }
+.checkin a { color: var(--blue); font-weight: 700; text-decoration: none; }
+.dashboard-link,
+.logout-link {
+    display: block;
+    margin-top: 12px;
+    color: var(--blue);
+    font-weight: 700;
+    text-decoration: none;
+}
+.logout-link { color: #d83b4b; }
+
+.image-panel {
+    position: relative;
+    overflow: hidden;
+    background-image: url('login_bg_4.png');
+    background-position: center center;
+    background-size: cover;
+    border-radius: 0 15px 15px 0;
+}
+
+@media (max-width: 860px) {
+    body { overflow: auto; padding: 28px 20px; }
+
+    .wrapper {
+        grid-template-columns: 1fr;
+        width: min(540px, 100%);
+        min-height: 0;
+        margin: auto;
+    }
+
+    .login-panel {
+        min-height: 475px;
+        padding: 50px clamp(30px, 8vw, 54px);
+        border-radius: 15px;
+    }
+
+    .image-panel { display: none; }
+
+    h1 {
+        font-size: 2.6rem;
+        line-height: 1.04;
+    }
+
+    .intro p { font-size: 1.02rem; }
+    .field-error { font-size: .82rem; }
+}
+
+@media (max-width: 420px) {
+    body { padding: 16px; }
+
+    .login-panel {
+        min-height: 450px;
+        padding: 42px 28px;
+    }
+
+    h1 { font-size: 2.35rem; }
+}
+.field.incorrect label svg { fill: #d83b4b; }
+.field.incorrect label img { filter: brightness(0) saturate(100%) invert(35%) sepia(48%) saturate(1773%) hue-rotate(322deg) brightness(91%) contrast(87%); }
+.field.incorrect input {
+    border-color: #f06272;
+    background: #fff8f8;
+    box-shadow: 0 0 0 3px rgb(216 59 75 / 12%);
+}
