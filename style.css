@@ -126,12 +126,6 @@ select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgb(92 135 244 /
 select option { color: var(--ink); background: #fff; }
 select option:disabled { color: #96a3bb; }
 
-/*
-   The PC picker below is a styled button + list (not a real <select>),
-   because a real <select>'s open dropdown can't be restyled in
-   Chrome/Edge on Windows. This gives it rounded corners, a blue hover
-   state, and a gray placeholder like every other field in the design.
-*/
 .pc-select {
     width: 100%;
     height: 54px;
@@ -167,12 +161,6 @@ select option:disabled { color: #96a3bb; }
 }
 .pc-field:focus-within::after { border-color: var(--blue); }
 
-/*
-   The list that pops open when "Select PC" is clicked. Because it's a
-   plain <div>, not a native browser dropdown, we can fully round its
-   corners and control its hover color — which a real <select> would
-   not allow on Chrome/Edge on Windows.
-*/
 .pc-options {
     position: absolute;
     z-index: 5;
