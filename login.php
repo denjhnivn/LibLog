@@ -14,6 +14,7 @@ $formError         = '';
 $usernameValue     = '';   
 $usernameHasError  = false;
 $passwordHasError  = false;
+$credentialError   = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -30,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($username !== $VALID_USERNAME || $password !== $VALID_PASSWORD) {
         $usernameHasError = true;
         $passwordHasError = true;
+        $credentialError = true;
+
         $formError = 'Incorrect admin username or password.';
 
     } else {
@@ -70,6 +73,7 @@ function field_class(bool $hasError): string {
                     <input type="text" id="username-input" name="username"
                            value="<?= $usernameValue ?>"
                            placeholder="Username" autocomplete="username">
+                    <?php if (!$credentialError): ?><p class="field-error">Username is required.</p><?php endif; ?>
                 </div>
 
                 <div class="field<?= field_class($passwordHasError) ?>" id="password-field">
@@ -79,8 +83,8 @@ function field_class(bool $hasError): string {
                     </label>
                     <input type="password" id="password-input" name="password"
                            placeholder="Password" autocomplete="current-password">
+                    <?php if (!$credentialError): ?><p class="field-error">Password is required.</p><?php endif; ?>
                 </div>
-
                 <button type="submit">Login</button>
                 <p class="form-error<?= $formError ? ' is-visible' : '' ?>" id="form-error" role="alert">
                     <?= htmlspecialchars($formError) ?>
