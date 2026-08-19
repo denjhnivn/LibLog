@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         $_SESSION['is_admin'] = true;
         $_SESSION['admin_username'] = $username;
+        $_SESSION['login_success'] = 'You have logged in successfully.';
         header('Location: dashboard.php');
         exit;
     }
@@ -36,14 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
 </head>
 <body>
     <main class="wrapper">
         <section class="login-panel">
             <div class="intro">
                 <h1>Hello,<br>Welcome Admin!</h1>
-                <p>Sign in to access your account</p>
+                <p>Log in to access your account</p>
             </div>
 
             <div id="login-container">
@@ -65,11 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <input type="password" id="password-input" name="password" placeholder="Enter password">
                     </div>
 
-                    <button type="button" id="sync-login-button" class="sync-button">
-                        Login - Synchronous
-                    </button>
-                    <button type="submit" id="async-login-button">
-                        Login - Asynchronous
+                    <button type="submit" id="login-button">
+                        <span class="button-label">Log in</span>
+                        <span class="button-loading" aria-hidden="true">Logging in...</span>
                     </button>
                     <p class="form-error <?php if ($formError != '') { echo 'is-visible'; } ?>" id="form-error">
                         <?php echo $formError; ?>
@@ -82,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="image-panel"></div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
     <script src="login.js"></script>
 </body>
 </html>

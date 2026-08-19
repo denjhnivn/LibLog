@@ -245,9 +245,11 @@ button {
     box-shadow: 0 7px 15px rgb(92 135 244 / 25%);
 }
 button:disabled { cursor: wait; opacity: .7; }
-
-/* The synchronous button has a different color so it is easy to identify. */
-.sync-button { background: #62708a; }
+.button-loading { display: none; }
+#login-button.is-loading .button-label { display: none; }
+#login-button.is-loading .button-loading { display: inline; }
+#checkin-button.is-loading .button-label { display: none; }
+#checkin-button.is-loading .button-loading { display: inline; }
 
 .checkin { margin-top: 21px; text-align: center; font-size: .88rem; }
 .checkin a { color: var(--blue); font-weight: 700; text-decoration: none; }

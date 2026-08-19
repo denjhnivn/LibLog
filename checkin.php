@@ -1,7 +1,10 @@
 <?php
 session_start();
 
-$_SESSION['checkins'] ??= [];
+// Create the session list the first time a student checks in.
+if (!isset($_SESSION['checkins'])) {
+    $_SESSION['checkins'] = [];
+}
 
 $pcChoices = ['PC 1', 'PC 2', 'PC 3', 'PC 4', 'PC 5'];
 
@@ -14,8 +17,8 @@ $pcHasError      = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $idNumber   = trim($_POST['id_number'] ?? '');
-    $selectedPc = trim($_POST['pc_number'] ?? '');
+    $idNumber = isset($_POST['id_number']) ? trim($_POST['id_number']) : '';
+    $selectedPc = isset($_POST['pc_number']) ? trim($_POST['pc_number']) : '';
 
     $idValue = htmlspecialchars($idNumber, ENT_QUOTES, 'UTF-8');
 
@@ -49,6 +52,8 @@ function field_class(bool $hasError): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Check-In</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
     <script src="checkin.js" defer></script>
 </head>
 <body>
@@ -94,7 +99,10 @@ function field_class(bool $hasError): string {
                     <p class="field-error">Please select a PC.</p>
                 </div>
 
-                <button type="submit">Check In</button>
+                <button type="submit" id="checkin-button">
+                    <span class="button-label">Check In</span>
+                    <span class="button-loading" aria-hidden="true">Validating...</span>
+                </button>
                 <p class="form-error<?= $checkinError ? ' is-visible' : '' ?>" id="checkin-error" role="alert">
                     <?= htmlspecialchars($checkinError) ?>
                 </p>

@@ -6,9 +6,12 @@ if (empty($_SESSION['is_admin'])) {
     exit;
 }
 
-$adminUsername = htmlspecialchars($_SESSION['admin_username'] ?? 'Admin', ENT_QUOTES, 'UTF-8');
+$adminUsername = isset($_SESSION['admin_username']) ? $_SESSION['admin_username'] : 'Admin';
+$adminUsername = htmlspecialchars($adminUsername, ENT_QUOTES, 'UTF-8');
+$loginSuccess = isset($_SESSION['login_success']) ? $_SESSION['login_success'] : '';
+unset($_SESSION['login_success']);
 
-$checkins = $_SESSION['checkins'] ?? [];
+$checkins = isset($_SESSION['checkins']) ? $_SESSION['checkins'] : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,6 +20,7 @@ $checkins = $_SESSION['checkins'] ?? [];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
 </head>
 <body>
     <main class="wrapper">
@@ -45,5 +49,15 @@ $checkins = $_SESSION['checkins'] ?? [];
         </section>
         <div class="image-panel" aria-hidden="true"></div>
     </main>
+    <?php if ($loginSuccess): ?>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Welcome!',
+                text: <?= json_encode($loginSuccess, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+            });
+        </script>
+    <?php endif; ?>
 </body>
 </html>
