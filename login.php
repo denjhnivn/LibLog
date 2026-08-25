@@ -49,21 +49,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div id="login-container">
                 <form id="login-form" method="POST" action="login.php" novalidate>
-                    <div class="field <?php if ($usernameError) { echo 'error'; } ?>">
+                    <div class="field <?php if ($usernameError) { echo 'error'; } if ($_SERVER['REQUEST_METHOD'] === 'POST' && $username === '') { echo ' is-invalid'; } ?>">
                         <label for="username-input">
                             <img src="images/person_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24.svg" alt="">
                             <span class="sr-only">Username</span>
                         </label>
                         <input type="text" id="username-input" name="username"
                                value="<?php echo htmlspecialchars($username); ?>" placeholder="Enter username">
+                        <p class="field-error">Username is required.</p>
                     </div>
 
-                    <div class="field <?php if ($passwordError) { echo 'error'; } ?>">
+                    <div class="field <?php if ($passwordError) { echo 'error'; } if ($_SERVER['REQUEST_METHOD'] === 'POST' && $passwordError && $formError === 'Please enter both username and password.') { echo ' is-invalid'; } ?>">
                         <label for="password-input">
                             <img src="images/lock_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24.svg" alt="">
                             <span class="sr-only">Password</span>
                         </label>
                         <input type="password" id="password-input" name="password" placeholder="Enter password">
+                        <p class="field-error">Password is required.</p>
                     </div>
 
                     <button type="submit" id="login-button">

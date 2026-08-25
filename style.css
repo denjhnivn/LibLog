@@ -211,6 +211,8 @@ select option:checked { color: #fff; background: var(--blue); }
     background: #fff8f8;
     box-shadow: 0 0 0 3px rgb(216 59 75 / 12%);
 }
+.field.is-invalid .pc-select,
+.field.is-invalid .pc-select-value { color: #d83b4b; }
 .field.is-invalid input::placeholder,
 .field.error input::placeholder { color: #d83b4b; }
 .field.is-invalid .field-error { display: block; }
@@ -265,7 +267,7 @@ button:disabled { cursor: wait; opacity: .7; }
 .image-panel {
     position: relative;
     overflow: hidden;
-    background-image: url('login_bg_4.png');
+    background-image: url('U.png');
     background-position: center center;
     background-size: cover;
     border-radius: 0 15px 15px 0;

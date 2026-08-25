@@ -46,10 +46,6 @@ notificationCenter.subscribe('checkin:error', function (message) {
 notificationCenter.subscribe('checkin:pc-selected', function (pc) {
     showToast('success', pc + ' selected.');
 });
-notificationCenter.subscribe('checkin:menu-opened', function () {
-    showToast('info', 'Choose an available PC.');
-});
-
 if (checkinSuccess.textContent.trim() !== '') {
     Swal.fire({ icon: 'success', title: 'Check-in complete', text: checkinSuccess.textContent.trim() });
 }
@@ -71,9 +67,6 @@ pcSelect.addEventListener('click', function () {
     var willOpen = pcOptions.hidden;
     pcOptions.hidden = !willOpen;
     pcSelect.setAttribute('aria-expanded', String(willOpen));
-    if (willOpen) {
-        notificationCenter.notify('checkin:menu-opened');
-    }
 });
 
 function selectPc(option) {

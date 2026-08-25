@@ -59,13 +59,24 @@ function showError(message) {
     notificationCenter.notify('login:error', message);
 }
 
+function setFieldError(input, hasError) {
+    input.parentElement.classList.toggle('error', hasError);
+    input.parentElement.classList.toggle('is-invalid', hasError);
+}
+
 function clearError() {
     formError.textContent = '';
     formError.classList.remove('is-visible');
 }
 
 function inputsAreValid() {
-    if (usernameInput.value.trim() === '' || passwordInput.value === '') {
+    var usernameIsEmpty = usernameInput.value.trim() === '';
+    var passwordIsEmpty = passwordInput.value === '';
+
+    setFieldError(usernameInput, usernameIsEmpty);
+    setFieldError(passwordInput, passwordIsEmpty);
+
+    if (usernameIsEmpty || passwordIsEmpty) {
         showError('Please enter both username and password.');
         return false;
     }
@@ -92,8 +103,15 @@ function submitLogin(event) {
 
 loginForm.addEventListener('submit', submitLogin);
 
-usernameInput.addEventListener('input', clearError);
-passwordInput.addEventListener('input', clearError);
+usernameInput.addEventListener('input', function () {
+    setFieldError(usernameInput, usernameInput.value.trim() === '');
+    clearError();
+});
+
+passwordInput.addEventListener('input', function () {
+    setFieldError(passwordInput, passwordInput.value === '');
+    clearError();
+});
 
 loginContainer.addEventListener('click', function (event) {
     console.info('Login container capture:', event.target.id || event.target.tagName);
