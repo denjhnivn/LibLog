@@ -98,7 +98,7 @@ function submitLogin(event) {
 
     setTimeout(function () {
         loginForm.submit();
-    }, 3000);
+    }, 1000);
 }
 
 loginForm.addEventListener('submit', submitLogin);

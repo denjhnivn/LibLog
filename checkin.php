@@ -1,18 +1,20 @@
 <?php
 session_start();
+require_once __DIR__ . '/db.php';
 
-// Create the session list the first time a student checks in.
-if (!isset($_SESSION['checkins'])) {
-    $_SESSION['checkins'] = [];
+$pcChoices = ['PC-1', 'PC-2', 'PC-3', 'PC-4', 'PC-5'];
+try {
+    $pcChoices = db()->query("SELECT pc_number FROM computers WHERE status = 'Available' ORDER BY pc_id")->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $exception) {
+    // Keep the selector usable while MySQL is being configured.
 }
-
-$pcChoices = ['PC 1', 'PC 2', 'PC 3', 'PC 4', 'PC 5'];
 
 $checkinError    = '';
 $checkinSuccess  = '';
 $idValue         = '';
 $selectedPc      = '';
 $idHasError      = false;
+$idFormatError   = false;
 $pcHasError      = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,22 +24,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $idValue = htmlspecialchars($idNumber, ENT_QUOTES, 'UTF-8');
 
-    $idHasError = ($idNumber === '');
-    $pcHasError = !in_array($selectedPc, $pcChoices, true);
+    $idFormatError = ($idNumber !== '' && !preg_match('/^\d{7}-\d$/', $idNumber));
+    $idHasError = ($idNumber === '' || $idFormatError);
+    $pcHasError = $selectedPc === '';
 
     if ($idHasError || $pcHasError) {
-        $checkinError = 'Please complete the required fields.';
+        $checkinError = $idFormatError
+            ? 'Enter a valid ID number'
+            : 'Please complete the required fields.';
     } else {
-        $_SESSION['checkins'][] = [
-            'id_number' => $idNumber,
-            'pc'        => $selectedPc,
-            'time'      => date('Y-m-d H:i:s'),
-        ];
+        try {
+            $database = db();
+            $database->beginTransaction();
+            $student = $database->prepare('SELECT student_id FROM students WHERE student_id = ?');
+            $student->execute([$idNumber]);
+            $computer = $database->prepare("SELECT pc_id FROM computers WHERE pc_number = ? AND status = 'Available' FOR UPDATE");
+            $computer->execute([$selectedPc]);
+            $pcId = $computer->fetchColumn();
 
-        $checkinSuccess = "Check-in submitted for {$selectedPc}.";
+            if (!$student->fetchColumn()) {
+                throw new RuntimeException('Student ID was not found.');
+            }
+            if (!$pcId) {
+                throw new RuntimeException('That PC is no longer available.');
+            }
 
-        $idValue    = '';
-        $selectedPc = '';
+            $session = $database->prepare('INSERT INTO usage_sessions (student_id, pc_id, date, time_in) VALUES (?, ?, CURDATE(), CURTIME())');
+            $session->execute([$idNumber, $pcId]);
+            $database->prepare("UPDATE computers SET status = 'In Use' WHERE pc_id = ?")->execute([$pcId]);
+            $database->commit();
+            $checkinSuccess = "Check-in submitted for {$selectedPc}.";
+            $idValue = '';
+            $selectedPc = '';
+        } catch (Throwable $exception) {
+            if (isset($database) && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            $checkinError = $exception instanceof RuntimeException
+                ? $exception->getMessage()
+                : 'Database connection failed. Check the LibLog configuration.';
+        }
     }
 }
 
@@ -73,7 +99,9 @@ function field_class(bool $hasError): string {
                     <input type="text" id="id-number" name="id_number"
                            value="<?= $idValue ?>"
                            placeholder="ID Number" inputmode="numeric">
-                    <p class="field-error">ID number is required.</p>
+                    <p class="field-error" id="id-number-error">
+                        <?= $idFormatError ? 'Please enter a valid Student ID.' : 'ID number is required.' ?>
+                    </p>
                 </div>
 
                 <div class="field pc-field<?= field_class($pcHasError) ?>" id="pc-field">

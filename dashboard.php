@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/db.php';
 
 if (empty($_SESSION['is_admin'])) {
     header('Location: login.php');
@@ -11,7 +12,13 @@ $adminUsername = htmlspecialchars($adminUsername, ENT_QUOTES, 'UTF-8');
 $loginSuccess = isset($_SESSION['login_success']) ? $_SESSION['login_success'] : '';
 unset($_SESSION['login_success']);
 
-$checkins = isset($_SESSION['checkins']) ? $_SESSION['checkins'] : [];
+$checkins = [];
+$databaseError = '';
+try {
+    $checkins = db()->query('SELECT u.student_id, c.pc_number, u.date, u.time_in FROM usage_sessions u JOIN computers c ON c.pc_id = u.pc_id ORDER BY u.session_id DESC')->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $exception) {
+    $databaseError = 'Database connection failed. Check the LibLog configuration.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,16 +37,18 @@ $checkins = isset($_SESSION['checkins']) ? $_SESSION['checkins'] : [];
                 <p>You are logged in as an administrator.</p>
             </div>
 
-            <?php if (empty($checkins)): ?>
+            <?php if ($databaseError): ?>
+                <p class="form-error is-visible"><?= htmlspecialchars($databaseError, ENT_QUOTES, 'UTF-8') ?></p>
+            <?php elseif (empty($checkins)): ?>
                 <p>No student check-ins yet.</p>
             <?php else: ?>
                 <p><strong><?= count($checkins) ?></strong> check-in(s) recorded this session:</p>
                 <ul>
-                    <?php foreach (array_reverse($checkins) as $entry): ?>
+                    <?php foreach ($checkins as $entry): ?>
                         <li>
-                            <?= htmlspecialchars($entry['id_number'], ENT_QUOTES, 'UTF-8') ?>
-                            &mdash; <?= htmlspecialchars($entry['pc'], ENT_QUOTES, 'UTF-8') ?>
-                            (<?= htmlspecialchars($entry['time'], ENT_QUOTES, 'UTF-8') ?>)
+                            <?= htmlspecialchars($entry['student_id'], ENT_QUOTES, 'UTF-8') ?>
+                            &mdash; <?= htmlspecialchars($entry['pc_number'], ENT_QUOTES, 'UTF-8') ?>
+                            (<?= htmlspecialchars($entry['date'] . ' ' . $entry['time_in'], ENT_QUOTES, 'UTF-8') ?>)
                         </li>
                     <?php endforeach; ?>
                 </ul>

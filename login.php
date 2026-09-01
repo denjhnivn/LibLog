@@ -1,9 +1,8 @@
 <?php
 // This page checks the login again on the server.
 session_start();
+require_once __DIR__ . '/db.php';
 
-$correctUsername = 'admin01';
-$correctPassword = 'password';
 $username = '';
 $formError = '';
 $usernameError = false;
@@ -17,16 +16,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $formError = 'Please enter both username and password.';
         $usernameError = ($username == '');
         $passwordError = ($password == '');
-    } elseif ($username != $correctUsername || $password != $correctPassword) {
-        $formError = 'Incorrect admin username or password.';
-        $usernameError = true;
-        $passwordError = true;
     } else {
-        $_SESSION['is_admin'] = true;
-        $_SESSION['admin_username'] = $username;
-        $_SESSION['login_success'] = 'You have logged in successfully.';
-        header('Location: dashboard.php');
-        exit;
+        try {
+            $statement = db()->prepare('SELECT username, password FROM staff WHERE username = ? LIMIT 1');
+            $statement->execute([$username]);
+            $staff = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if (!$staff || !password_verify($password, $staff['password'])) {
+                $formError = 'Incorrect admin username or password.';
+                $usernameError = true;
+                $passwordError = true;
+            } else {
+                $_SESSION['is_admin'] = true;
+                $_SESSION['admin_username'] = $staff['username'];
+                $_SESSION['login_success'] = 'You have logged in successfully.';
+                header('Location: dashboard.php');
+                exit;
+            }
+        } catch (PDOException $exception) {
+            $formError = 'Database connection failed. Check the LibLog configuration.';
+        }
     }
 }
 ?>

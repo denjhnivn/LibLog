@@ -1,6 +1,7 @@
 var checkinForm = document.getElementById('checkin-form');
 var idInput = document.getElementById('id-number');
 var idField = document.getElementById('id-field');
+var idNumberError = document.getElementById('id-number-error');
 var pcField = document.getElementById('pc-field');
 var pcSelect = document.getElementById('pc-select');
 var pcOptions = document.querySelector('.pc-options');
@@ -58,6 +59,30 @@ function setError(field, hasError) {
     field.classList.toggle('is-invalid', hasError);
 }
 
+function idNumberIsValid(idNumber) {
+    // Seven digits, a hyphen, and one final digit: for example, 2410679-1.
+    return /^\d{7}-\d$/.test(idNumber);
+}
+
+function validateIdNumber() {
+    var idNumber = idInput.value.trim();
+
+    if (idNumber === '') {
+        idNumberError.textContent = 'ID number is required.';
+        setError(idField, true);
+        return false;
+    }
+
+    if (!idNumberIsValid(idNumber)) {
+        idNumberError.textContent = 'Please enter a valid Student ID.';
+        setError(idField, true);
+        return false;
+    }
+
+    setError(idField, false);
+    return true;
+}
+
 function closePcOptions() {
     pcOptions.hidden = true;
     pcSelect.setAttribute('aria-expanded', 'false');
@@ -95,7 +120,8 @@ document.addEventListener('click', function (event) {
 });
 
 idInput.addEventListener('input', function () {
-    setError(idField, idInput.value.trim() === '');
+    // Validation styling is intentionally shown only after a submit attempt.
+    setError(idField, false);
     checkinSuccess.classList.remove('is-visible');
     checkinError.classList.remove('is-visible');
 });
@@ -110,20 +136,22 @@ checkinForm.addEventListener('click', function (event) {
 
 function synchronousValidationDelay() {
     var startTime = Date.now();
-    while (Date.now() - startTime < 3000) {
+    while (Date.now() - startTime < 1000) {
     
     }
 }
 
 checkinForm.addEventListener('submit', function (event) {
     var idIsEmpty = idInput.value.trim() === '';
+    var idIsValid = validateIdNumber();
     var pcIsEmpty = selectedPc === '';
-    setError(idField, idIsEmpty);
     setError(pcField, pcIsEmpty);
 
-    if (idIsEmpty || pcIsEmpty) {
+    if (!idIsValid || pcIsEmpty) {
         event.preventDefault();
-        checkinError.textContent = 'Please complete the required fields.';
+        checkinError.textContent = idIsEmpty || pcIsEmpty
+            ? 'Please complete the required fields.'
+            : 'Please enter a valid Student ID.';
         checkinError.classList.add('is-visible');
         checkinSuccess.classList.remove('is-visible');
         notificationCenter.notify('checkin:error', 'Please complete the required fields.');
