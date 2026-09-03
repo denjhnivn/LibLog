@@ -76,7 +76,7 @@ function field_class(bool $hasError): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Check-In</title>
+    <title>Student Computer Session</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
@@ -86,7 +86,7 @@ function field_class(bool $hasError): string {
     <main class="wrapper">
         <section class="login-panel" aria-labelledby="checkin-title">
             <div class="intro">
-                <h1 id="checkin-title">Student<br>Check-In</h1>
+                <h1 id="checkin-title">Student<br>Computer Session</h1>
                 <p>Enter your ID number and select your PC.</p>
             </div>
 
@@ -128,7 +128,7 @@ function field_class(bool $hasError): string {
                 </div>
 
                 <button type="submit" id="checkin-button">
-                    <span class="button-label">Check In</span>
+                    <span class="button-label">Start Session</span>
                     <span class="button-loading" aria-hidden="true">Validating...</span>
                 </button>
                 <p class="form-error<?= $checkinError ? ' is-visible' : '' ?>" id="checkin-error" role="alert">
