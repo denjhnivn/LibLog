@@ -60,7 +60,6 @@ function setError(field, hasError) {
 }
 
 function idNumberIsValid(idNumber) {
-    // Seven digits, a hyphen, and one final digit: for example, 2410679-1.
     return /^\d{7}-\d$/.test(idNumber);
 }
 
@@ -120,18 +119,17 @@ document.addEventListener('click', function (event) {
 });
 
 idInput.addEventListener('input', function () {
-    // Validation styling is intentionally shown only after a submit attempt.
     setError(idField, false);
     checkinSuccess.classList.remove('is-visible');
     checkinError.classList.remove('is-visible');
 });
 
 checkinForm.addEventListener('click', function (event) {
-    console.info('Check-in form capture:', event.target.id || event.target.className);
+    console.log('Check-in form capture:', event.target.id || event.target.className);
 }, true);
 
 checkinForm.addEventListener('click', function (event) {
-    console.info('Check-in form bubble:', event.target.id || event.target.className);
+    console.log('Check-in form bubble:', event.target.id || event.target.className);
 });
 
 function synchronousValidationDelay() {

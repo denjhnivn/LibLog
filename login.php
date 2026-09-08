@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['is_admin'] = true;
                 $_SESSION['admin_username'] = $staff['username'];
                 $_SESSION['admin_staff_id'] = $staff['staff_id'];
+                $_SESSION['admin_success'] = 'Login successful. Welcome back!';
                 header('Location: admin/dashboard.php');
                 exit;
             }
@@ -64,8 +65,8 @@ function field_class(bool $hasError): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 </head>
 <body>
     <main class="wrapper">
@@ -101,15 +102,15 @@ function field_class(bool $hasError): string {
                 <p class="form-error<?= ($formError || $accessError) ? ' is-visible' : '' ?>" id="form-error" role="alert">
                     <?= htmlspecialchars($formError ?: $accessError) ?>
                 </p>
-                <p class="form-success" id="form-success" role="status"></p>
+                <p class="form-success" id="form-success" role="status"></p> 
                 </form>
+
             </div>
 
             <p class="checkin">Are you a student? <a href="checkin.php">Start Session</a></p>
         </section>
         <div class="image-panel" aria-hidden="true"></div>
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="login.js"></script>
 </body>
 </html>

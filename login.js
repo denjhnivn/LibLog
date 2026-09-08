@@ -1,126 +1,129 @@
+function LoginEventPublisher() {
+    this.handlers = [];
+}
+
+LoginEventPublisher.prototype.subscribe = function (handler) {
+    this.handlers.push(handler);
+};
+
+LoginEventPublisher.prototype.publish = function (eventData) {
+    this.handlers.forEach(function (handler) {
+        handler(eventData);
+    });
+};
+
 var loginForm = document.getElementById('login-form');
 var loginButton = document.getElementById('login-button');
-var loginContainer = document.getElementById('login-container');
 var usernameInput = document.getElementById('username-input');
 var passwordInput = document.getElementById('password-input');
 var formError = document.getElementById('form-error');
-
-var notificationCenter = {
-    listeners: {},
-
-    subscribe: function (eventName, handler) {
-        if (!this.listeners[eventName]) {
-            this.listeners[eventName] = [];
-        }
-        this.listeners[eventName].push(handler);
-    },
-
-    notify: function (eventName, message) {
-        var eventListeners = this.listeners[eventName] || [];
-        var index;
-
-        for (index = 0; index < eventListeners.length; index++) {
-            eventListeners[index](message);
-        }
-    }
-};
-
-function showToast(iconName, message) {
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: iconName,
-        title: message,
-        showConfirmButton: false,
-        timer: 2200,
-        timerProgressBar: true
-    });
-}
-
-notificationCenter.subscribe('login:attempt', function (message) {
-    showToast('info', message);
-});
-
-notificationCenter.subscribe('login:error', function (message) {
-    showToast('error', message);
-});
-
-if (formError.textContent.trim() !== '') {
-    Swal.fire({
-        icon: 'error',
-        title: 'Login failed',
-        text: formError.textContent.trim()
-    });
-}
-
-function showError(message) {
-    formError.textContent = message;
-    formError.classList.add('is-visible');
-    notificationCenter.notify('login:error', message);
-}
+var formSuccess = document.getElementById('form-success');
+var loginAttemptEvent = new LoginEventPublisher();
 
 function setFieldError(input, hasError) {
-    input.parentElement.classList.toggle('error', hasError);
     input.parentElement.classList.toggle('is-invalid', hasError);
 }
 
-function clearError() {
+function clearMessages() {
     formError.textContent = '';
     formError.classList.remove('is-visible');
+    formSuccess.textContent = '';
+    formSuccess.classList.remove('not-visible');
 }
 
-function inputsAreValid() {
-    var usernameIsEmpty = usernameInput.value.trim() === '';
+function validateLogin(eventData) {
+    var usernameIsEmpty = eventData.username === '';
     var passwordIsEmpty = passwordInput.value === '';
 
     setFieldError(usernameInput, usernameIsEmpty);
     setFieldError(passwordInput, passwordIsEmpty);
 
-    if (usernameIsEmpty || passwordIsEmpty) {
-        showError('Please enter both username and password.');
-        return false;
-    }
+    eventData.isValid = !usernameIsEmpty && !passwordIsEmpty;
+    eventData.message = eventData.isValid
+        ? 'Validating username and password...'
+        : 'Please enter a valid username and password.';
 
-    return true;
+    console.log('Validation:', eventData.message);
 }
 
-function submitLogin(event) {
-    event.preventDefault();
-    clearError();
+function recordLoginAudit(eventData) {
+    console.log(
+        'Audit: login attempt by "' + (eventData.username || 'unknown user') +
+        '" at ' + eventData.timestamp.toLocaleString()
+    );
+}
 
-    if (!inputsAreValid()) {
+function displayLoginResult(eventData) {
+    if (eventData.isValid) {
+        formSuccess.textContent = eventData.message;
+        formSuccess.classList.add('is-visible');
+        console.log("Welcome, admin!");
         return;
     }
 
-    notificationCenter.notify('login:attempt', 'Checking your credentials...');
-    loginButton.disabled = true;
-    loginButton.classList.add('is-loading');
-
-    setTimeout(function () {
-        loginForm.submit();
-    }, 1000);
+    formError.textContent = eventData.message;
+    formError.classList.add('is-visible');
+    console.error('Failure message to user: ' + eventData.message);
 }
 
-loginForm.addEventListener('submit', submitLogin);
+loginAttemptEvent.subscribe(validateLogin);
+loginAttemptEvent.subscribe(recordLoginAudit);
+loginAttemptEvent.subscribe(displayLoginResult);
+loginAttemptEvent.subscribe(() => {
+    console.log('Lambda: Login attempt detected!');
+});
+
+loginForm.addEventListener('submit', function (browserEvent) {
+    browserEvent.preventDefault();
+    clearMessages();
+
+    var eventData = {
+        username: usernameInput.value.trim(),
+        timestamp: new Date(),
+        isValid: false,
+        message: ''
+    };
+
+    loginAttemptEvent.publish(eventData);
+
+    if (!eventData.isValid) {
+        return;
+    }
+
+    loginButton.disabled = true;
+    loginButton.textContent = 'Verifying...';
+
+    window.setTimeout(function () {
+        loginForm.submit();
+    }, 500);
+});
 
 usernameInput.addEventListener('input', function () {
-    setFieldError(usernameInput, usernameInput.value.trim() === '');
-    clearError();
+    setFieldError(usernameInput, false);
+    clearMessages();
+});
+
+usernameInput.addEventListener('click', function () {
+    console.log('Event: Username field clicked.');
+});
+
+usernameInput.addEventListener('focus', function () {
+    console.log('Event: Username field focused.');
 });
 
 passwordInput.addEventListener('input', function () {
-    setFieldError(passwordInput, passwordInput.value === '');
-    clearError();
+    setFieldError(passwordInput, false);
+    clearMessages();
 });
 
-loginContainer.addEventListener('click', function (event) {
-    console.info('Login container capture:', event.target.id || event.target.tagName);
-}, true);
+passwordInput.addEventListener('click', function () {
+    console.log('Event: Password field clicked.');
+});
+
+passwordInput.addEventListener('focus', function () {
+    console.log('Event: Password field focused.');
+});
 
 loginButton.addEventListener('click', function () {
-    console.info('Login button clicked.');
-});
-
-loginContainer.addEventListener('click', function (event) {
-    console.info('Login container bubble:', event.target.id || event.target.tagName);
+    console.log('Event: Login button clicked.');
 });
