@@ -1,0 +1,148 @@
+<?php
+session_start();
+require_once __DIR__ . '/db.php';
+
+$pcChoices = ['PC-1', 'PC-2', 'PC-3', 'PC-4', 'PC-5'];
+try {
+    $pcChoices = db()->query("SELECT pc_number FROM computers WHERE status = 'Available' ORDER BY pc_id")->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $exception) {
+    // Keep the selector usable while MySQL is being configured.
+}
+
+$checkinError    = '';
+$checkinSuccess  = '';
+$idValue         = '';
+$selectedPc      = '';
+$idHasError      = false;
+$idFormatError   = false;
+$pcHasError      = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $idNumber = isset($_POST['id_number']) ? trim($_POST['id_number']) : '';
+    $selectedPc = isset($_POST['pc_number']) ? trim($_POST['pc_number']) : '';
+
+    $idValue = htmlspecialchars($idNumber, ENT_QUOTES, 'UTF-8');
+
+    $idFormatError = ($idNumber !== '' && !preg_match('/^\d{7}-\d$/', $idNumber));
+    $idHasError = ($idNumber === '' || $idFormatError);
+    $pcHasError = $selectedPc === '';
+
+    if ($idHasError || $pcHasError) {
+        $checkinError = $idFormatError
+            ? 'Enter a valid ID number'
+            : 'Please complete the required fields.';
+    } else {
+        try {
+            $database = db();
+            $database->beginTransaction();
+            $student = $database->prepare('SELECT student_id FROM students WHERE student_id = ?');
+            $student->execute([$idNumber]);
+            $computer = $database->prepare("SELECT pc_id FROM computers WHERE pc_number = ? AND status = 'Available' FOR UPDATE");
+            $computer->execute([$selectedPc]);
+            $pcId = $computer->fetchColumn();
+
+            if (!$student->fetchColumn()) {
+                throw new RuntimeException('Student ID was not found.');
+            }
+            if (!$pcId) {
+                throw new RuntimeException('That PC is no longer available.');
+            }
+
+            $session = $database->prepare('INSERT INTO usage_sessions (student_id, pc_id, date, time_in) VALUES (?, ?, CURDATE(), CURTIME())');
+            $session->execute([$idNumber, $pcId]);
+            $database->prepare("UPDATE computers SET status = 'In Use' WHERE pc_id = ?")->execute([$pcId]);
+            $database->commit();
+            $checkinSuccess = "Check-in submitted for {$selectedPc}.";
+            $idValue = '';
+            $selectedPc = '';
+        } catch (Throwable $exception) {
+            if (isset($database) && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            $checkinError = $exception instanceof RuntimeException
+                ? $exception->getMessage()
+                : 'Database connection failed. Check the LibLog configuration.';
+        }
+    }
+}
+
+function field_class(bool $hasError): string {
+    return $hasError ? ' incorrect is-invalid' : '';
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Computer Session</title>
+     <link rel="icon" type="image/png" href="U2.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
+    <script src="checkin.js" defer></script>
+</head>
+<body>
+    <main class="wrapper">
+        <section class="login-panel" aria-labelledby="checkin-title">
+            <div class="intro">
+                <h1 id="checkin-title">Student<br>Computer Session</h1>
+                <p>Enter your ID number and select your PC.</p>
+            </div>
+
+            <form id="checkin-form" method="POST" action="checkin.php" novalidate>
+                <div class="field<?= field_class($idHasError) ?>" id="id-field">
+                    <label for="id-number">
+                        <img src="images/id_card_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24.svg" alt="">
+                        <span class="sr-only">ID Number</span>
+                    </label>
+                    <input type="text" id="id-number" name="id_number"
+                           value="<?= $idValue ?>"
+                           placeholder="ID Number" inputmode="numeric">
+                    <p class="field-error" id="id-number-error">
+                        <?= $idFormatError ? 'Please enter a valid Student ID.' : 'ID number is required.' ?>
+                    </p>
+                </div>
+
+                <div class="field pc-field<?= field_class($pcHasError) ?>" id="pc-field">
+                    <label for="pc-select">
+                        <img src="images/desktop_windows_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24.svg" alt="">
+                        <span class="sr-only">PC Number</span>
+                    </label>
+                    
+                    <input type="hidden" id="pc-number-input" name="pc_number" value="<?= htmlspecialchars($selectedPc, ENT_QUOTES, 'UTF-8') ?>">
+
+                    <button class="pc-select" id="pc-select" type="button" aria-expanded="false" aria-label="Select a PC">
+                        <span class="pc-select-value<?= $selectedPc ? ' has-value' : '' ?>">
+                            <?= $selectedPc ? htmlspecialchars($selectedPc, ENT_QUOTES, 'UTF-8') : 'Select PC' ?>
+                        </span>
+                    </button>
+                    <div class="pc-options" role="listbox" aria-label="Available PCs" hidden>
+                        <?php foreach ($pcChoices as $pc): ?>
+                            <button class="pc-option" type="button" role="option" data-value="<?= htmlspecialchars($pc, ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars($pc, ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="field-error">Please select a PC.</p>
+                </div>
+
+                <button type="submit" id="checkin-button">
+                    <span class="button-label">Start Session</span>
+                    <span class="button-loading" aria-hidden="true">Validating...</span>
+                </button>
+                <p class="form-error<?= $checkinError ? ' is-visible' : '' ?>" id="checkin-error" role="alert">
+                    <?= htmlspecialchars($checkinError) ?>
+                </p>
+                <p class="form-success<?= $checkinSuccess ? ' is-visible' : '' ?>" id="checkin-success" role="status">
+                    <?= htmlspecialchars($checkinSuccess) ?>
+                </p>
+            </form>
+
+            <p class="checkin">Administrator? <a href="login.php">Admin Login</a></p>
+        </section>
+        <div class="image-panel" aria-hidden="true"></div>
+    </main>
+</body>
+</html>
