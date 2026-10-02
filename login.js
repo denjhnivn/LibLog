@@ -22,6 +22,7 @@ var loginAttemptEvent = new LoginEventPublisher();
 
 function setFieldError(input, hasError) {
     input.parentElement.classList.toggle('is-invalid', hasError);
+    input.parentElement.classList.toggle('incorrect', hasError);
 }
 
 function clearMessages() {
@@ -40,7 +41,7 @@ function validateLogin(eventData) {
 
     eventData.isValid = !usernameIsEmpty && !passwordIsEmpty;
     eventData.message = eventData.isValid
-        ? 'Validating username and password...'
+        ? ''
         : 'Please enter a valid username and password.';
 
     console.log('Validation:', eventData.message);
@@ -55,8 +56,7 @@ function recordLoginAudit(eventData) {
 
 function displayLoginResult(eventData) {
     if (eventData.isValid) {
-        formSuccess.textContent = eventData.message;
-        formSuccess.classList.add('is-visible');
+
         console.log("Welcome, admin!");
         return;
     }
@@ -74,7 +74,10 @@ loginAttemptEvent.subscribe(() => {
 });
 
 loginForm.addEventListener('submit', function (browserEvent) {
-    browserEvent.preventDefault();
+    if (loginButton.disabled) {
+        browserEvent.preventDefault();
+        return;
+    }
     clearMessages();
 
     var eventData = {
@@ -87,15 +90,14 @@ loginForm.addEventListener('submit', function (browserEvent) {
     loginAttemptEvent.publish(eventData);
 
     if (!eventData.isValid) {
+        browserEvent.preventDefault();
         return;
     }
 
     loginButton.disabled = true;
-    loginButton.textContent = 'Verifying...';
-
-    window.setTimeout(function () {
-        loginForm.submit();
-    }, 500);
+    loginButton.classList.add('is-loading');
+    loginButton.setAttribute('aria-busy', 'true');
+    loginButton.querySelector('.login-spinner').hidden = false;
 });
 
 usernameInput.addEventListener('input', function () {
@@ -126,4 +128,11 @@ passwordInput.addEventListener('focus', function () {
 
 loginButton.addEventListener('click', function () {
     console.log('Event: Login button clicked.');
+});
+
+window.addEventListener('pageshow', function () {
+    loginButton.disabled = false;
+    loginButton.classList.remove('is-loading');
+    loginButton.removeAttribute('aria-busy');
+    loginButton.querySelector('.login-spinner').hidden = true;
 });

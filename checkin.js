@@ -1,166 +1,107 @@
-var checkinForm = document.getElementById('checkin-form');
-var idInput = document.getElementById('id-number');
-var idField = document.getElementById('id-field');
-var idNumberError = document.getElementById('id-number-error');
-var pcField = document.getElementById('pc-field');
-var pcSelect = document.getElementById('pc-select');
-var pcOptions = document.querySelector('.pc-options');
-var pcValue = document.querySelector('.pc-select-value');
-var pcNumberInput = document.getElementById('pc-number-input');
-var checkinSuccess = document.getElementById('checkin-success');
-var checkinError = document.getElementById('checkin-error');
-var checkinButton = document.getElementById('checkin-button');
-var selectedPc = pcNumberInput.value || '';
+(() => {
+    const panel = document.getElementById('kiosk-panel');
+    let busy = false;
+    let inactivityTimer;
 
-var notificationCenter = {
-    listeners: {},
-    subscribe: function (eventName, handler) {
-        if (!this.listeners[eventName]) {
-            this.listeners[eventName] = [];
+    // Reset only the kiosk UI. No database session is ended by Cancel or inactivity.
+    const resetKiosk = () => {
+        clearTimeout(inactivityTimer);
+        window.Swal?.close();
+        panel.replaceChildren();
+        location.replace('checkin.php');
+    };
+    const armInactivity = () => {
+        clearTimeout(inactivityTimer);
+        if (!busy && panel.querySelector('form')?.dataset.mode !== 'initial') {
+            inactivityTimer = setTimeout(resetKiosk, 45000);
         }
-        this.listeners[eventName].push(handler);
-    },
-    notify: function (eventName, detail) {
-        var eventListeners = this.listeners[eventName] || [];
-        var index;
-        for (index = 0; index < eventListeners.length; index++) {
-            eventListeners[index](detail);
+    };
+    const showError = message => {
+        const error = panel.querySelector('#checkin-error');
+        error.textContent = message;
+        error.classList.add('is-visible');
+    };
+    const showSuccess = success => {
+        // The response already contains a blank ID screen and no student identity.
+        panel.querySelector('#kiosk-success')?.remove();
+        if (window.Swal) {
+            Swal.fire({ icon: 'success', title: success.title, text: success.text,
+                showConfirmButton: false, timer: 1800, timerProgressBar: true });
+        } else {
+            const message = document.createElement('p');
+            message.className = 'form-success is-visible';
+            message.setAttribute('role', 'status');
+            message.textContent = success.title + '. ' + success.text;
+            panel.append(message);
+            setTimeout(() => message.remove(), 1800);
         }
-    }
-};
+    };
 
-function showToast(iconName, title) {
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: iconName,
-        title: title,
-        showConfirmButton: false,
-        timer: 2200,
-        timerProgressBar: true
-    });
-}
-
-notificationCenter.subscribe('checkin:error', function (message) {
-    showToast('error', message);
-});
-notificationCenter.subscribe('checkin:pc-selected', function (pc) {
-    showToast('success', pc + ' selected.');
-});
-if (checkinSuccess.textContent.trim() !== '') {
-    Swal.fire({ icon: 'success', title: 'Check-in complete', text: checkinSuccess.textContent.trim() });
-}
-if (checkinError.textContent.trim() !== '') {
-    Swal.fire({ icon: 'error', title: 'Unable to check in', text: checkinError.textContent.trim() });
-}
-
-function setError(field, hasError) {
-    field.classList.toggle('incorrect', hasError);
-    field.classList.toggle('is-invalid', hasError);
-}
-
-function idNumberIsValid(idNumber) {
-    return /^\d{7}-\d$/.test(idNumber);
-}
-
-function validateIdNumber() {
-    var idNumber = idInput.value.trim();
-
-    if (idNumber === '') {
-        idNumberError.textContent = 'ID number is required.';
-        setError(idField, true);
-        return false;
-    }
-
-    if (!idNumberIsValid(idNumber)) {
-        idNumberError.textContent = 'Please enter a valid Student ID.';
-        setError(idField, true);
-        return false;
-    }
-
-    setError(idField, false);
-    return true;
-}
-
-function closePcOptions() {
-    pcOptions.hidden = true;
-    pcSelect.setAttribute('aria-expanded', 'false');
-}
-
-pcSelect.addEventListener('click', function () {
-    var willOpen = pcOptions.hidden;
-    pcOptions.hidden = !willOpen;
-    pcSelect.setAttribute('aria-expanded', String(willOpen));
-});
-
-function selectPc(option) {
-    selectedPc = option.dataset.value;
-    pcValue.textContent = selectedPc;
-    pcValue.classList.add('has-value');
-    pcNumberInput.value = selectedPc;
-    setError(pcField, false);
-    closePcOptions();
-    checkinError.classList.remove('is-visible');
-    notificationCenter.notify('checkin:pc-selected', selectedPc);
-}
-
-var pcOptionButtons = document.querySelectorAll('.pc-option');
-var optionIndex;
-for (optionIndex = 0; optionIndex < pcOptionButtons.length; optionIndex++) {
-    pcOptionButtons[optionIndex].addEventListener('click', function () {
-        selectPc(this);
-    });
-}
-
-document.addEventListener('click', function (event) {
-    if (!event.target.closest('.pc-field')) {
-        closePcOptions();
-    }
-});
-
-idInput.addEventListener('input', function () {
-    setError(idField, false);
-    checkinSuccess.classList.remove('is-visible');
-    checkinError.classList.remove('is-visible');
-});
-
-checkinForm.addEventListener('click', function (event) {
-    console.log('Check-in form capture:', event.target.id || event.target.className);
-}, true);
-
-checkinForm.addEventListener('click', function (event) {
-    console.log('Check-in form bubble:', event.target.id || event.target.className);
-});
-
-function synchronousValidationDelay() {
-    var startTime = Date.now();
-    while (Date.now() - startTime < 1000) {
-    
-    }
-}
-
-checkinForm.addEventListener('submit', function (event) {
-    var idIsEmpty = idInput.value.trim() === '';
-    var idIsValid = validateIdNumber();
-    var pcIsEmpty = selectedPc === '';
-    setError(pcField, pcIsEmpty);
-
-    if (!idIsValid || pcIsEmpty) {
+    panel.addEventListener('submit', async event => {
+        const form = event.target;
+        if (form.id !== 'checkin-form') return;
         event.preventDefault();
-        checkinError.textContent = idIsEmpty || pcIsEmpty
-            ? 'Please complete the required fields.'
-            : 'Please enter a valid Student ID.';
-        checkinError.classList.add('is-visible');
-        checkinSuccess.classList.remove('is-visible');
-        notificationCenter.notify('checkin:error', 'Please complete the required fields.');
-        return;
-    }
-
-    event.preventDefault();
-    checkinButton.disabled = true;
-    checkinButton.classList.add('is-loading');
-    setTimeout(function () {
-        synchronousValidationDelay();
-        checkinForm.submit();
-    }, 50);
-});
+        if (busy) return;
+        const action = event.submitter?.value === 'cancel' ? 'cancel' : form.querySelector('input[name="action"]').value;
+        if (action === 'continue') {
+            const input = form.elements.id_number;
+            input.value = input.value.trim();
+            const valid = /^[0-9]{7}-[0-9]$/.test(input.value);
+            input.closest('.field').classList.toggle('is-invalid', !valid);
+            input.closest('.field').classList.toggle('incorrect', !valid);
+            if (!valid) {
+                const message = input.value ? 'Please enter a valid Student ID.' : 'ID number is required.';
+                panel.querySelector('#id-number-error').textContent = message;
+                showError(message);
+                input.focus();
+                return;
+            }
+        }
+        if (action === 'start' && !form.querySelector('input[name="pc_number"]:checked:not(:disabled)')) {
+            showError('Please select an available PC.');
+            form.querySelector('input[name="pc_number"]:not(:disabled)')?.focus();
+            return;
+        }
+        const body = new FormData(form);
+        body.set('action', action);
+        busy = true;
+        clearTimeout(inactivityTimer);
+        const button = action === 'cancel' ? event.submitter : form.querySelector('#checkin-button');
+        const controls = [...form.querySelectorAll('button, input')].filter(control => !control.disabled);
+        controls.forEach(control => control.disabled = true);
+        button?.classList.add('is-loading');
+        button?.setAttribute('aria-busy', 'true');
+        if (button?.querySelector('.kiosk-spinner')) button.querySelector('.kiosk-spinner').hidden = false;
+        const controller = new AbortController();
+        const requestTimeout = setTimeout(() => controller.abort(), 15000);
+        try {
+            const response = await fetch('checkin.php', { method: 'POST', body,
+                headers: { 'X-Requested-With': 'fetch' }, signal: controller.signal, cache: 'no-store' });
+            if (!response.ok) throw new Error('Request failed');
+            const result = await response.json();
+            if (typeof result.html !== 'string') throw new Error('Unexpected response');
+            panel.innerHTML = result.html;
+            if (result.success) showSuccess(result.success);
+            panel.querySelector('#id-number, input[name="pc_number"]:not(:disabled), #checkin-button')?.focus();
+        } catch (error) {
+            showError('Unable to complete the request. Please try again or approach the librarian.');
+        } finally {
+            clearTimeout(requestTimeout);
+            controls.forEach(control => control.disabled = false);
+            button?.classList.remove('is-loading');
+            button?.removeAttribute('aria-busy');
+            if (button?.querySelector('.kiosk-spinner')) button.querySelector('.kiosk-spinner').hidden = true;
+            busy = false;
+            armInactivity();
+        }
+    });
+    panel.addEventListener('input', event => {
+        if (event.target.id === 'id-number') event.target.closest('.field').classList.remove('incorrect', 'is-invalid');
+        panel.querySelector('#checkin-error')?.classList.remove('is-visible');
+    });
+    ['pointerdown', 'keydown', 'input'].forEach(name => document.addEventListener(name, armInactivity, { passive: true }));
+    window.addEventListener('pageshow', event => { if (event.persisted) resetKiosk(); });
+    const success = panel.querySelector('#kiosk-success');
+    if (success) showSuccess({ title: success.dataset.title, text: success.textContent.trim() });
+    armInactivity();
+})();

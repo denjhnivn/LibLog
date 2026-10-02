@@ -44,18 +44,17 @@ function admin_header(string $title, string $activePage): void
 
             <div class="sidebar-footer">
                 <div class="admin-profile">
-                    <img src="admin.png" alt="Admin profile">
-                    <span>Signed in as<br><strong><?= $adminName ?></strong></span>
+                    <i data-lucide="circle-user-round" aria-hidden="true"></i>
+                    <span><strong><?= $adminName ?></strong><small>Signed in as Admin</small></span>
                 </div>
-                <a href="logout.php"><i data-lucide="log-out" aria-hidden="true"></i>Logout</a>
+                <a href="logout.php"><span class="logout-icon"><i data-lucide="log-out" aria-hidden="true"></i></span><span>Logout</span></a>
             </div>
         </aside>
 
         <main class="admin-main">
             <header class="admin-topbar">
-                <p class="eyebrow">LIBRARY COMPUTER USAGE</p>
                 <h1><?= h($title) ?></h1>
-                <a class="checkin-shortcut" href="../checkin.php"><i data-lucide="log-in" aria-hidden="true"></i>Student Check-in</a>
+
             </header>
     <?php
 }

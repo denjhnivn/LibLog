@@ -46,11 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 flash_message('admin_success', 'Staff member updated successfully.');
             }
         }
-    } catch (RuntimeException $exception) {
-        flash_message('admin_error', $exception->getMessage());
     } catch (PDOException $exception) {
         $message = $exception->getCode() === '23000' ? 'Username already exists.' : 'Unable to save the staff record.';
         flash_message('admin_error', $message);
+    } catch (RuntimeException $exception) {
+        flash_message('admin_error', $exception->getMessage());
+    }
+
+    if ($action === 'edit' && !empty($_SESSION['admin_error'])) {
+        $_SESSION['staff_edit_form'] = ['staff_id' => $staffId, 'first_name' => trim($_POST['first_name'] ?? ''), 'last_name' => trim($_POST['last_name'] ?? ''), 'email' => trim($_POST['email'] ?? ''), 'username' => trim($_POST['username'] ?? '')];
     }
 
     header('Location: staff.php');
@@ -70,11 +74,42 @@ try {
     $loadError = 'Unable to load staff.';
 }
 
+$savedEdit = $_SESSION['staff_edit_form'] ?? null;
+unset($_SESSION['staff_edit_form']);
+if ($savedEdit) $editStaff = $savedEdit;
+
 admin_header('Staff', 'staff');
-admin_notice();
+if (!$savedEdit) admin_notice();
 ?>
 <?php if (!empty($loadError)): ?><p class="notice error"><?= h($loadError) ?></p><?php endif; ?>
-<section class="content-card form-card"><div class="section-heading"><h2><?= $editStaff ? 'Edit Staff Member' : 'Add Staff Member' ?></h2><?php if ($editStaff): ?><a href="staff.php">Cancel</a><?php endif; ?></div>
-<form class="admin-form" method="post"><input type="hidden" name="action" value="<?= $editStaff ? 'edit' : 'add' ?>"><input type="hidden" name="staff_id" value="<?= h($editStaff['staff_id'] ?? '') ?>"><label>First Name<input name="first_name" required value="<?= h($editStaff['first_name'] ?? '') ?>"></label><label>Last Name<input name="last_name" required value="<?= h($editStaff['last_name'] ?? '') ?>"></label><label>Email<input type="email" name="email" required value="<?= h($editStaff['email'] ?? '') ?>"></label><label>Username<input name="username" required value="<?= h($editStaff['username'] ?? '') ?>"></label><label>Password<input type="password" name="password" <?= $editStaff ? '' : 'required' ?> placeholder="<?= $editStaff ? 'Leave blank to keep current password' : '' ?>"></label><button><?= $editStaff ? 'Save Changes' : 'Add Staff Member' ?></button></form></section>
-<section class="content-card"><h2>Staff Records</h2><div class="table-wrap"><table><thead><tr><th>Staff ID</th><th>First Name</th><th>Last Name</th><th>Email</th><th>Username</th><th>Actions</th></tr></thead><tbody><?php foreach ($staffMembers as $staff): ?><tr><td><?= h($staff['staff_id']) ?></td><td><?= h($staff['first_name']) ?></td><td><?= h($staff['last_name']) ?></td><td><?= h($staff['email']) ?></td><td><?= h($staff['username']) ?></td><td class="actions"><a href="staff.php?edit=<?= $staff['staff_id'] ?>">Edit</a><form method="post" onsubmit="return confirm('Delete this staff member permanently?');"><input type="hidden" name="action" value="delete"><input type="hidden" name="staff_id" value="<?= $staff['staff_id'] ?>"><button class="link-danger">Delete</button></form></td></tr><?php endforeach; ?></tbody></table></div></section>
+<section class="content-card form-card">
+    <div class="section-heading"><h2>Add Staff Member</h2></div>
+    <form class="admin-form" method="post">
+        <input type="hidden" name="action" value="add">
+        <label>First Name<input name="first_name" required></label>
+        <label>Last Name<input name="last_name" required></label>
+        <label>Email<input name="email" type="email" required></label>
+        <label>Username<input name="username" required></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" required></label>
+        <button>Add Staff Member</button>
+    </form>
+</section>
+
+<dialog id="staff-edit-modal" class="admin-modal" aria-labelledby="staff-edit-title" data-open="<?= $editStaff ? 'true' : 'false' ?>">
+    <div class="modal-header"><h2 id="staff-edit-title"><i data-lucide="users" aria-hidden="true"></i>Edit Staff Member</h2><a class="modal-close" href="staff.php" data-close-modal aria-label="Close Edit Staff Member"><i data-lucide="x" aria-hidden="true"></i></a></div>
+    <?php if ($savedEdit) admin_notice(); ?>
+    <form class="admin-form record-edit-form" method="post">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="staff_id" value="<?= h($editStaff['staff_id'] ?? '') ?>">
+        <label>First Name<input name="first_name" required value="<?= h($editStaff['first_name'] ?? '') ?>" autofocus></label>
+        <label>Last Name<input name="last_name" required value="<?= h($editStaff['last_name'] ?? '') ?>"></label>
+        <label>Email<input name="email" type="email" required value="<?= h($editStaff['email'] ?? '') ?>"></label>
+        <label>Username<input name="username" required value="<?= h($editStaff['username'] ?? '') ?>"></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password"></label>
+        <div class="modal-actions"><button type="submit"><i data-lucide="save" aria-hidden="true"></i>Save Changes</button><a class="button-secondary" href="staff.php" data-close-modal>Cancel</a></div>
+    </form>
+</dialog>
+<noscript><style>#staff-edit-modal[data-open="true"] { display: block; position: static; margin: 0 0 24px; }</style></noscript>
+
+<section class="content-card"><h2>Staff Records</h2><div class="table-wrap"><table><thead><tr><th>Staff ID</th><th>First Name</th><th>Last Name</th><th>Email</th><th>Username</th><th class="actions-heading">Actions</th></tr></thead><tbody><?php foreach ($staffMembers as $staff): ?><tr><td><?= h($staff['staff_id']) ?></td><td><?= h($staff['first_name']) ?></td><td><?= h($staff['last_name']) ?></td><td><?= h($staff['email']) ?></td><td><?= h($staff['username']) ?></td><td class="actions"><div class="action-group"><a href="staff.php?edit=<?= $staff['staff_id'] ?>" data-edit-modal="staff-edit-modal" data-record="<?= h(json_encode($staff)) ?>">Edit</a><form method="post" onsubmit="return confirm('Delete this staff member permanently?');"><input type="hidden" name="action" value="delete"><input type="hidden" name="staff_id" value="<?= $staff['staff_id'] ?>"><button class="link-danger">Delete</button></form></div></td></tr><?php endforeach; ?></tbody></table></div></section>
 <?php admin_footer(); ?>

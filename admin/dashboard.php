@@ -12,7 +12,7 @@ try {
 
     $counts['total'] = (int) $database->query('SELECT COUNT(*) FROM computers')->fetchColumn();
     $counts['available'] = (int) $database->query("SELECT COUNT(*) FROM computers WHERE status = 'Available'")->fetchColumn();
-    // In Use is retained here to support existing records created by the student page.
+    // Count legacy In Use records too; new kiosk sessions use Occupied.
     $counts['occupied'] = (int) $database->query("SELECT COUNT(*) FROM computers WHERE status IN ('Occupied', 'In Use')")->fetchColumn();
 
     $todayStatement = $database->prepare('SELECT COUNT(*) FROM usage_sessions WHERE date = CURDATE()');
@@ -31,6 +31,8 @@ try {
     $databaseError = 'Database connection failed. Check the LibLog configuration.';
 }
 
+$loginSuccess = !empty($_SESSION['login_success']);
+unset($_SESSION['login_success']);
 admin_header('Dashboard', 'dashboard');
 admin_notice();
 ?>
@@ -46,7 +48,7 @@ admin_notice();
     </section>
 
     <section class="content-card">
-        <div class="section-heading"><h2>Recent Usage Sessions</h2><a href="usage_logs.php">View all logs</a></div>
+        <div class="section-heading"><h2>Recent Usage Logs</h2><a href="usage_logs.php">View All Logs</a></div>
         <?php if (!$recentSessions): ?>
             <p class="empty-state">No usage sessions have been recorded yet.</p>
         <?php else: ?>
@@ -59,4 +61,11 @@ admin_notice();
     </section>
 <?php endif; ?>
 
+<?php if ($loginSuccess): ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
+<script>
+if (window.Swal) Swal.fire({ icon: 'success', title: 'Login Successful', text: 'Welcome to the LibLog Admin Dashboard.', showConfirmButton: false, timer: 1800, timerProgressBar: true });
+</script>
+<?php endif; ?>
 <?php admin_footer(); ?>

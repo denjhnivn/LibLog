@@ -42,15 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $credentialError = true;
                 $formError = 'Incorrect admin username or password.';
             } else {
+                session_regenerate_id(true);
                 $_SESSION['is_admin'] = true;
                 $_SESSION['admin_username'] = $staff['username'];
                 $_SESSION['admin_staff_id'] = $staff['staff_id'];
-                $_SESSION['admin_success'] = 'Login successful. Welcome back!';
+                $_SESSION['login_success'] = true;
                 header('Location: admin/dashboard.php');
                 exit;
             }
         } catch (PDOException $exception) {
-            $formError = 'Database connection failed. Check the LibLog configuration.';
+            $formError = 'Unable to sign in right now. Please try again.';
         }
     }
 }
@@ -72,7 +73,7 @@ function field_class(bool $hasError): string {
     <main class="wrapper">
         <section class="login-panel" aria-labelledby="login-title">
             <div class="intro">
-                <h1 id="login-title">Hello,<br>Welcome Admin!</h1>
+                <h1 id="login-title">Admin Login</h1>
                 <p>Sign in to access your account</p>
             </div>
 
@@ -98,7 +99,7 @@ function field_class(bool $hasError): string {
                            placeholder="Password" autocomplete="current-password">
                     <?php if (!$credentialError): ?><p class="field-error">Password is required.</p><?php endif; ?>
                 </div>
-                    <button type="submit" id="login-button">Login</button>
+                    <button type="submit" id="login-button" aria-label="Login"><span class="login-button-label">Login</span><span class="login-spinner" aria-hidden="true" hidden></span></button>
                 <p class="form-error<?= ($formError || $accessError) ? ' is-visible' : '' ?>" id="form-error" role="alert">
                     <?= htmlspecialchars($formError ?: $accessError) ?>
                 </p>

@@ -97,6 +97,62 @@
         select.after(wrapper);
         select.hidden = true;
     });
+    // Trim before native pattern validation, including Enter-key submission.
+    document.querySelectorAll('input[name="pc_number"]').forEach(input => {
+        const validate = () => {
+            input.value = input.value.trim();
+            input.setCustomValidity(input.value && (!/^PC-[1-9][0-9]*$/.test(input.value) || input.value.length > 10)
+                ? 'PC number must use the format PC-1 (up to 10 characters).' : '');
+        };
+        input.addEventListener('input', validate);
+        input.addEventListener('change', validate);
+        input.form.addEventListener('submit', event => {
+            validate();
+            if (!input.reportValidity()) event.preventDefault();
+        });
+    });
+    // All record editors share the same dialog behavior and styling.
+    const editTriggers = new Map();
+    const closeModal = modal => {
+        modal.close();
+        editTriggers.get(modal.id)?.focus();
+        const url = new URL(location.href);
+        if (url.searchParams.has('edit')) {
+            url.searchParams.delete('edit');
+            history.replaceState(null, '', url);
+        }
+    };
+    document.addEventListener('click', event => {
+        const edit = event.target.closest('[data-edit-modal]');
+        if (edit) {
+            const modal = document.getElementById(edit.dataset.editModal);
+            if (!modal) return;
+            event.preventDefault();
+            editTriggers.set(modal.id, edit);
+            modal.querySelectorAll('.notice').forEach(notice => notice.remove());
+            const form = modal.querySelector('form');
+            form.reset();
+            const record = JSON.parse(edit.dataset.record);
+            Object.entries(record).forEach(([name, value]) => {
+                const field = form.elements.namedItem(name);
+                if (field && name !== 'password') field.value = name === 'status' && value === 'In Use' ? 'Occupied' : (value ?? '');
+            });
+            form.querySelectorAll('input').forEach(input => input.setCustomValidity(''));
+            if (!modal.open) modal.showModal();
+            form.querySelector('[autofocus], input:not([type="hidden"]):not([readonly])')?.focus();
+        }
+        const close = event.target.closest('[data-close-modal]');
+        if (close) {
+            const modal = close.closest('dialog');
+            if (!modal) return;
+            event.preventDefault();
+            closeModal(modal);
+        }
+    });
+    document.querySelectorAll('.admin-modal').forEach(modal => {
+        modal.addEventListener('cancel', event => { event.preventDefault(); closeModal(modal); });
+        if (modal.dataset.open === 'true') modal.showModal();
+    });
     const decorateActions = () => {
         document.querySelectorAll('.actions a, .actions button, .admin-form > button').forEach(button => {
             if (button.querySelector('[data-lucide], svg')) return;
