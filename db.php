@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Asia/Manila');
+
 // Set LIBLOG_DB_PASSWORD in your web-server environment to the MySQL password.
 function db(): PDO
 {
@@ -12,6 +14,8 @@ function db(): PDO
             $password === false ? '' : $password,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
+        // Keep MySQL NOW()/CURTIME() aligned with the PHP display timezone.
+        $connection->exec("SET time_zone = '+08:00'");
     }
 
     return $connection;

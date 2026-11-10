@@ -22,10 +22,31 @@ CREATE TABLE IF NOT EXISTS usage_sessions (
     date DATE,
     time_in TIME,
     time_out TIME,
+    time_in_dt DATETIME NULL,
+    time_out_dt DATETIME NULL,
+    duration_minutes INT NULL,
+    purpose VARCHAR(50) NULL,
+    ended_by ENUM('student','admin','auto') NULL,
+    INDEX idx_usage_sessions_student_id (student_id),
+    INDEX idx_usage_sessions_pc_id (pc_id),
+    INDEX idx_usage_sessions_date (date),
+    INDEX idx_usage_sessions_time_out_dt (time_out_dt),
     FOREIGN KEY (student_id) REFERENCES students(student_id),
     FOREIGN KEY (pc_id) REFERENCES computers(pc_id)
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+    setting_key VARCHAR(50) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
+    ('library_name', 'Library'),
+    ('opening_time', '08:00'),
+    ('closing_time', '20:00'),
+    ('max_session_minutes', '180'),
+    ('logs_per_page', '25');
 CREATE TABLE IF NOT EXISTS staff (
     staff_id INT AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR(50),

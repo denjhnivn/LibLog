@@ -1,17 +1,21 @@
 <?php
+require_once __DIR__ . '/../settings.php';
 
 /**
  * Outputs the shared sidebar and the opening tags for every admin page.
  */
-function admin_header(string $title, string $activePage): void
+function admin_header(string $title, string $activePage, string $subtitle = '', string $actions = ''): void
 {
     $adminName = h($_SESSION['admin_username'] ?? 'Admin');
+    $libraryName = h(get_setting('library_name'));
     $navigation = [
         'dashboard.php' => ['Dashboard', 'dashboard'],
         'students.php' => ['Students', 'students'],
         'computers.php' => ['Computers', 'computers'],
         'usage_logs.php' => ['Usage Logs', 'logs'],
+        'reports.php' => ['Reports', 'reports'],
         'staff.php' => ['Staff', 'staff'],
+        'settings.php' => ['Settings', 'settings'],
     ];
     ?>
 <!DOCTYPE html>
@@ -19,7 +23,7 @@ function admin_header(string $title, string $activePage): void
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= h($title) ?> | LibLog</title>
+    <title><?= h($title) ?> | <?= $libraryName ?></title>
     <link rel="icon" type="image/png" href="../U2.png">
     <link rel="stylesheet" href="../style.css">
     <script src="lucide.min.js" defer></script>
@@ -29,14 +33,14 @@ function admin_header(string $title, string $activePage): void
     <div class="admin-shell">
         <aside class="admin-sidebar">
             <a class="brand" href="dashboard.php">
-                <img class="brand-logo" src="../U2.png" alt="LibLog logo">
-                <span>LibLog<small>Library Management</small></span>
+                <img class="brand-logo" src="../U2.png" alt="<?= $libraryName ?> logo">
+                <span><?= $libraryName ?><small>Library Management</small></span>
             </a>
 
             <nav class="admin-nav" aria-label="Admin navigation">
                 <?php foreach ($navigation as $url => [$label, $pageKey]): ?>
                     <a href="<?= $url ?>" class="<?= $pageKey === $activePage ? 'active' : '' ?>" <?= $pageKey === $activePage ? 'aria-current="page"' : '' ?>>
-                        <i data-lucide="<?= ['dashboard' => 'layout-dashboard', 'students' => 'graduation-cap', 'computers' => 'monitor', 'logs' => 'history', 'staff' => 'users'][$pageKey] ?>" aria-hidden="true"></i>
+                        <i data-lucide="<?= ['dashboard' => 'layout-dashboard', 'students' => 'graduation-cap', 'computers' => 'monitor', 'logs' => 'history', 'reports' => 'chart-no-axes-column-increasing', 'settings' => 'settings', 'staff' => 'users'][$pageKey] ?>" aria-hidden="true"></i>
                         <?= h($label) ?>
                     </a>
                 <?php endforeach; ?>
@@ -53,19 +57,21 @@ function admin_header(string $title, string $activePage): void
 
         <main class="admin-main">
             <header class="admin-topbar">
-                <h1><?= h($title) ?></h1>
-
+                <div class="page-heading"><h1><?= h($title) ?></h1><?php if ($subtitle !== ''): ?><p><?= h($subtitle) ?></p><?php endif; ?></div>
+                <?php if ($actions !== ''): ?><div class="page-actions"><?= $actions ?></div><?php endif; ?>
             </header>
     <?php
 }
 
 function admin_search(string $placeholder, string $value = ''): void
 {
+    static $counter = 0;
+    $counter++;
     ?>
     <form class="search-form" method="get" role="search">
-        <label class="sr-only" for="record-search">Search records</label>
+        <label class="sr-only" for="record-search-<?= $counter ?>">Search records</label>
         <i data-lucide="search" aria-hidden="true"></i>
-        <input id="record-search" type="search" name="search" value="<?= h($value) ?>" placeholder="<?= h($placeholder) ?>" autocomplete="off">
+        <input id="record-search-<?= $counter ?>" type="search" name="search" value="<?= h($value) ?>" placeholder="<?= h($placeholder) ?>" autocomplete="off">
         <button title="Search records" aria-label="Search records"><i data-lucide="search" aria-hidden="true"></i></button>
     </form>
     <?php

@@ -6,7 +6,7 @@
         return element;
     };
     const renderIcons = () => window.lucide?.createIcons();
-    const fields = { student_id: 'id-card', first_name: 'user', last_name: 'user', email: 'mail', course: 'graduation-cap', username: 'user-round', password: 'lock-keyhole', pc_number: 'monitor', status: 'circle-check' };
+    const fields = { student_id: 'id-card', first_name: 'user', last_name: 'user', email: 'mail', course: 'graduation-cap', username: 'user-round', password: 'lock-keyhole', pc_number: 'monitor', status: 'circle-check', library_name: 'library', opening_time: 'clock', closing_time: 'clock', max_session_minutes: 'timer', logs_per_page: 'list' };
     document.querySelectorAll('.admin-form label').forEach(label => {
         const field = label.querySelector('input, select');
         const text = label.firstChild;
@@ -16,9 +16,18 @@
         caption.append(icon(fields[field.name] || 'tag'), text);
         label.prepend(caption);
     });
-    document.querySelectorAll('.admin-form select').forEach((select, index) => {
+    document.querySelectorAll('.admin-form select, .logs-filter-form select').forEach((select, index) => {
         const label = select.closest('label');
-        const caption = label.querySelector('.field-caption');
+        const omitSelected = Boolean(select.closest('.logs-filter-form'));
+        let caption = label.querySelector('.field-caption, .rounded-select-caption');
+        if (!caption) {
+            const labelText = [...label.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+            caption = document.createElement('span');
+            caption.className = 'rounded-select-caption';
+            caption.textContent = labelText?.textContent.trim() || 'Select an option';
+            labelText?.remove();
+            label.prepend(caption);
+        }
         caption.id = `select-caption-${index}`;
         const wrapper = document.createElement('div');
         wrapper.className = 'rounded-select';
@@ -49,8 +58,9 @@
             button.className = 'rounded-select-option';
             button.textContent = option.textContent;
             button.disabled = option.disabled;
+            button.hidden = option.disabled || (omitSelected && option.selected);
             button.setAttribute('role', 'option');
-            button.setAttribute('aria-selected', String(option.selected));
+            button.setAttribute('aria-selected', String(!omitSelected && option.selected));
             button.addEventListener('click', () => {
                 select.value = option.value;
                 select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -61,9 +71,12 @@
             return button;
         });
         const open = () => {
+            const available = options.filter(option => !option.hidden && !option.disabled);
+            if (!available.length) return;
             list.hidden = false;
             trigger.setAttribute('aria-expanded', 'true');
-            (options[select.selectedIndex] || options.find(option => !option.disabled))?.focus();
+            const initial = omitSelected ? available[0] : (options[select.selectedIndex] || available[0]);
+            initial?.focus();
         };
         trigger.addEventListener('click', () => list.hidden ? open() : close());
         trigger.addEventListener('keydown', event => {
@@ -80,7 +93,7 @@
             }
             if (list.hidden || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
             event.preventDefault();
-            const enabled = options.filter(option => !option.disabled);
+            const enabled = options.filter(option => !option.hidden && !option.disabled);
             const current = enabled.indexOf(document.activeElement);
             const next = event.key === 'Home' ? 0 : event.key === 'End' ? enabled.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + enabled.length) % enabled.length;
             enabled[next]?.focus();
@@ -89,10 +102,16 @@
         document.addEventListener('focusin', event => { if (!wrapper.contains(event.target)) close(); });
         const sync = () => {
             value.textContent = select.selectedOptions[0]?.textContent || '';
-            options.forEach((option, optionIndex) => option.setAttribute('aria-selected', String(optionIndex === select.selectedIndex)));
+            options.forEach((option, optionIndex) => {
+                const selected = optionIndex === select.selectedIndex;
+                option.hidden = option.disabled || (omitSelected && selected);
+                option.setAttribute('aria-selected', String(!omitSelected && selected));
+            });
+            trigger.disabled = omitSelected && !options.some(option => !option.hidden && !option.disabled);
         };
         select.addEventListener('change', sync);
         select.form?.addEventListener('reset', () => setTimeout(sync, 0));
+        sync();
         wrapper.append(trigger, list);
         select.after(wrapper);
         select.hidden = true;
@@ -135,7 +154,10 @@
             const record = JSON.parse(edit.dataset.record);
             Object.entries(record).forEach(([name, value]) => {
                 const field = form.elements.namedItem(name);
-                if (field && name !== 'password') field.value = name === 'status' && value === 'In Use' ? 'Occupied' : (value ?? '');
+                if (field && name !== 'password') {
+                    field.value = name === 'status' && value === 'In Use' ? 'Occupied' : (value ?? '');
+                    if (field instanceof HTMLSelectElement) field.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             });
             form.querySelectorAll('input').forEach(input => input.setCustomValidity(''));
             if (!modal.open) modal.showModal();
@@ -153,6 +175,39 @@
         modal.addEventListener('cancel', event => { event.preventDefault(); closeModal(modal); });
         if (modal.dataset.open === 'true') modal.showModal();
     });
+    const importModal = document.getElementById('students-import-modal');
+    if (importModal) {
+        const form = document.getElementById('students-import-form');
+        const input = form.querySelector('.import-file-input');
+        const zone = form.querySelector('.import-dropzone');
+        const row = form.querySelector('.import-file-row');
+        const error = form.querySelector('.import-error');
+        const submit = form.querySelector('[type="submit"]');
+        const close = () => importModal.close();
+        document.querySelector('[data-open-import]')?.addEventListener('click', () => importModal.showModal());
+        importModal.querySelectorAll('[data-close-import]').forEach(button => button.addEventListener('click', close));
+        const setFile = file => {
+            error.hidden = true;
+            if (!file) { input.value = ''; row.hidden = true; submit.disabled = true; return; }
+            if (!/\.csv$/i.test(file.name) || file.size > 2 * 1024 * 1024) {
+                input.value = ''; row.hidden = true; submit.disabled = true;
+                error.textContent = !/\.csv$/i.test(file.name) ? 'Choose a .csv file.' : 'The file must be 2 MB or smaller.';
+                error.hidden = false; return;
+            }
+            const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files;
+            form.querySelector('.import-file-name').textContent = file.name;
+            form.querySelector('.import-file-size').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+            row.hidden = false; submit.disabled = false;
+        };
+        zone.addEventListener('click', () => input.click());
+        zone.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+        input.addEventListener('change', () => setFile(input.files[0]));
+        form.querySelector('.import-remove').addEventListener('click', () => setFile(null));
+        ['dragenter', 'dragover'].forEach(type => zone.addEventListener(type, event => { event.preventDefault(); zone.classList.add('is-dragover'); }));
+        ['dragleave', 'drop'].forEach(type => zone.addEventListener(type, event => { event.preventDefault(); zone.classList.remove('is-dragover'); }));
+        zone.addEventListener('drop', event => setFile(event.dataTransfer.files[0]));
+        form.addEventListener('submit', () => { if (submit.disabled) return; submit.disabled = true; submit.classList.add('is-loading'); submit.querySelector('span').textContent = 'Importing'; });
+    }
     const decorateActions = () => {
         document.querySelectorAll('.actions a, .actions button, .admin-form > button').forEach(button => {
             if (button.querySelector('[data-lucide], svg')) return;
@@ -166,6 +221,7 @@
     document.querySelectorAll('.content-card h2').forEach(heading => heading.prepend(icon(heading.textContent.includes('Session') || heading.textContent.includes('History') ? 'history' : heading.textContent.includes('Computer') ? 'monitor' : heading.textContent.includes('Student') ? 'graduation-cap' : 'users')));
 
     document.querySelectorAll('.content-card:has(table)').forEach(section => {
+        if (section.classList.contains('logs-table-card')) return;
         let form = section.querySelector('.search-form');
         const serverSearch = Boolean(form);
         if (!form && !location.pathname.endsWith('dashboard.php')) {
@@ -255,6 +311,11 @@
         });
         updateCount();
     });
+    document.querySelectorAll('.logs-export:not(.is-disabled)').forEach(link => link.addEventListener('click', () => {
+        link.classList.add('is-loading');
+        link.setAttribute('aria-disabled', 'true');
+        window.setTimeout(() => { link.classList.remove('is-loading'); link.removeAttribute('aria-disabled'); }, 1500);
+    }));
     document.querySelectorAll('.notice').forEach(notice => notice.setAttribute('role', notice.classList.contains('error') ? 'alert' : 'status'));
     decorateActions();
 })();

@@ -2,6 +2,8 @@
 
 session_start();
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/settings.php';
+$libraryName = get_setting('library_name');
 
 if (!empty($_SESSION['is_admin'])) {
     header('Location: admin/dashboard.php');
@@ -65,7 +67,7 @@ function field_class(bool $hasError): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login</title>
+    <title><?= htmlspecialchars($libraryName, ENT_QUOTES, 'UTF-8') ?> | Admin Login</title>
     <link rel="icon" type="image/png" href="U2.png">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -73,6 +75,7 @@ function field_class(bool $hasError): string {
     <main class="wrapper">
         <section class="login-panel" aria-labelledby="login-title">
             <div class="intro">
+                <p class="login-library-name"><?= htmlspecialchars($libraryName, ENT_QUOTES, 'UTF-8') ?></p>
                 <h1 id="login-title">Admin Login</h1>
                 <p>Sign in to access your account</p>
             </div>

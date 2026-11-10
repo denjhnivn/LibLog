@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/settings.php';
 header('Cache-Control: no-store, max-age=0');
 
 $_SESSION['kiosk_token'] ??= bin2hex(random_bytes(32));
@@ -15,6 +16,27 @@ function kiosk_input(string $name): string {
     return is_string($_POST[$name] ?? null) ? trim($_POST[$name]) : '';
 }
 
+function kiosk_library_is_open(): bool {
+    $settings = get_settings();
+    $now = date('H:i');
+    return $now >= $settings['opening_time'] && $now < $settings['closing_time'];
+}
+
+function kiosk_closed_message(): string {
+    $opening = DateTimeImmutable::createFromFormat('!H:i', get_setting('opening_time'));
+    return 'The library is closed. Opens at ' . ($opening ? $opening->format('g:i A') : '8:00 AM') . '.';
+}
+
+function kiosk_format_minutes(int $minutes): string {
+    $minutes = max(0, $minutes);
+    $hours = intdiv($minutes, 60);
+    $remaining = $minutes % 60;
+    $parts = [];
+    if ($hours > 0) $parts[] = $hours . ' ' . ($hours === 1 ? 'hour' : 'hours');
+    if ($remaining > 0) $parts[] = $remaining . ' ' . ($remaining === 1 ? 'minute' : 'minutes');
+    return $parts ? implode(' ', $parts) : 'less than a minute';
+}
+
 // Always build the displayed identity, current session, and PC list from the database.
 function kiosk_student_state(PDO $database, string $studentId): array {
     $student = $database->prepare('SELECT student_id, first_name, last_name FROM students WHERE student_id = ?');
@@ -25,7 +47,7 @@ function kiosk_student_state(PDO $database, string $studentId): array {
         throw new RuntimeException('Student ID not found. Please approach the librarian.');
     }
     $session = $database->prepare(
-        'SELECT u.session_id, u.pc_id, u.date, u.time_in, c.pc_number
+        'SELECT u.session_id, u.pc_id, u.date, u.time_in, u.time_in_dt, c.pc_number
          FROM usage_sessions u JOIN computers c ON c.pc_id = u.pc_id
          WHERE u.student_id = ? AND u.time_out IS NULL
          ORDER BY u.session_id LIMIT 1'
@@ -94,6 +116,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($active) {
                     throw new RuntimeException('You already have an active session. You can end it below.');
                 }
+                if (!kiosk_library_is_open()) {
+                    throw new RuntimeException(kiosk_closed_message());
+                }
                 $pcNumber = kiosk_input('pc_number');
                 if ($pcNumber === '') {
                     throw new RuntimeException('Please select an available PC.');
@@ -109,11 +134,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($pcSession->fetchColumn()) {
                     throw new RuntimeException('That computer is no longer available. Please select another PC.');
                 }
-                $database->prepare('INSERT INTO usage_sessions (student_id, pc_id, date, time_in) VALUES (?, ?, CURDATE(), CURTIME())')
+                $database->prepare('INSERT INTO usage_sessions (student_id, pc_id, date, time_in, time_in_dt) VALUES (?, ?, CURDATE(), CURTIME(), NOW())')
                     ->execute([$studentId, $pc['pc_id']]);
                 // Occupied is the canonical status also used by admin computer editing.
                 $database->prepare("UPDATE computers SET status = 'Occupied' WHERE pc_id = ?")->execute([$pc['pc_id']]);
-                $success = ['title' => 'Session Started', 'text' => $pcNumber . ' is now assigned to you.'];
+                $timeLimit = kiosk_format_minutes((int) get_setting('max_session_minutes'));
+                $success = ['title' => 'Session Started', 'text' => $pcNumber . ' is now assigned to you. Time limit: ' . $timeLimit . '.'];
             } else {
                 if (!$active || (string) $active['session_id'] !== kiosk_input('session_id')) {
                     unset($_SESSION['kiosk_student_id']);
@@ -124,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$computer->fetchColumn()) {
                     throw new RuntimeException('Unable to end the session. Please approach the librarian.');
                 }
-                $database->prepare('UPDATE usage_sessions SET time_out = CURTIME() WHERE session_id = ? AND time_out IS NULL')
+                $database->prepare("UPDATE usage_sessions SET time_out = CURTIME(), time_out_dt = NOW(), duration_minutes = TIMESTAMPDIFF(MINUTE, time_in_dt, NOW()), ended_by = 'student' WHERE session_id = ? AND time_out IS NULL")
                     ->execute([$active['session_id']]);
                 $pcSession = $database->prepare('SELECT session_id FROM usage_sessions WHERE pc_id = ? AND time_out IS NULL LIMIT 1 FOR UPDATE');
                 $pcSession->execute([$active['pc_id']]);
@@ -170,12 +196,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function kiosk_panel(array $state): string {
     ob_start();
     $initial = $state['mode'] === 'initial';
+    $libraryName = get_setting('library_name');
+    $libraryClosed = !kiosk_library_is_open();
     $buttonText = $initial ? 'Continue' : ($state['mode'] === 'start' ? 'Start Session' : 'End Session');
     ?>
     <div class="intro">
+        <p class="kiosk-library-name"><?= kiosk_escape($libraryName) ?></p>
         <h1 id="checkin-title">Student<br>Computer Session</h1>
         <p><?= $initial ? 'Enter your ID number to continue.' : ($state['mode'] === 'start' ? 'Choose an available computer to start.' : 'End your session when you leave.') ?></p>
     </div>
+    <?php if ($state['mode'] !== 'end' && $libraryClosed): ?><p class="kiosk-closed-notice" role="status"><?= kiosk_escape(kiosk_closed_message()) ?></p><?php endif; ?>
     <?php if (!$initial): ?>
         <div class="kiosk-identity<?= $state['mode'] === 'end' ? ' kiosk-identity-end' : '' ?>"><strong><?= kiosk_escape(trim($state['student']['first_name'] . ' ' . $state['student']['last_name'])) ?></strong><span><?= kiosk_escape($state['student']['student_id']) ?></span></div>
     <?php endif; ?>
@@ -204,11 +234,12 @@ function kiosk_panel(array $state): string {
                     <span class="kiosk-computer-icon"><img src="images/desktop_windows_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24.svg" alt=""></span>
                     <div><span class="kiosk-detail-label">Assigned computer</span><strong><?= kiosk_escape($state['session']['pc_number']) ?></strong></div>
                 </div>
-                <dl><div><dt>Started</dt><dd><time datetime="<?= kiosk_escape($state['session']['date'] . 'T' . $state['session']['time_in']) ?>"><?= kiosk_escape(date('g:i A', strtotime($state['session']['time_in']))) ?><small><?= kiosk_escape(date('M j, Y', strtotime($state['session']['date']))) ?></small></time></dd></div></dl>
+                <?php $startValue = $state['session']['time_in_dt'] ?: ($state['session']['date'] . ' ' . $state['session']['time_in']); $elapsedMinutes = max(0, (int) floor((time() - (strtotime($startValue) ?: time())) / 60)); ?>
+                <dl><div><dt>Started</dt><dd><time datetime="<?= kiosk_escape($state['session']['time_in_dt'] ?: ($state['session']['date'] . 'T' . $state['session']['time_in'])) ?>"><?= kiosk_escape(date('g:i A', strtotime($state['session']['time_in']))) ?><small><?= kiosk_escape(date('M j, Y', strtotime($state['session']['date']))) ?></small></time></dd></div><div><dt>Elapsed time</dt><dd><?= kiosk_escape(kiosk_format_minutes($elapsedMinutes)) ?></dd></div></dl>
             </section>
         <?php endif; ?>
         <p class="form-error<?= $state['error'] ? ' is-visible' : '' ?>" id="checkin-error" role="alert"><?= kiosk_escape($state['error']) ?></p>
-        <button type="submit" id="checkin-button" class="kiosk-submit" aria-label="<?= $buttonText ?>"><span class="button-label"><?= $buttonText ?></span><span class="kiosk-spinner" aria-hidden="true" hidden></span></button>
+        <button type="submit" id="checkin-button" class="kiosk-submit" aria-label="<?= $buttonText ?>" <?= $state['mode'] === 'start' && $libraryClosed ? 'disabled aria-disabled="true"' : '' ?>><span class="button-label"><?= $buttonText ?></span><span class="kiosk-spinner" aria-hidden="true" hidden></span></button>
         <?php if (!$initial): ?><button type="submit" class="kiosk-cancel" name="action" value="cancel" formnovalidate>Cancel</button><?php endif; ?>
     </form>
     <?php if ($initial): ?><p class="checkin">Administrator? <a href="login.php">Admin Login</a></p><?php endif; ?>
@@ -228,7 +259,7 @@ if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Computer Session</title>
+    <title><?= kiosk_escape(get_setting('library_name')) ?> | Student Computer Session</title>
     <link rel="icon" type="image/png" href="U2.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
