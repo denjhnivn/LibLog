@@ -6,6 +6,12 @@ require_once __DIR__ . '/admin_layout.php';
 $editStudent = null;
 $search = trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : '');
 $courseOptions = ['BSIT', 'BIT', 'BSME', 'BSEE', 'BSCE', 'BSCpE', 'BSFT', 'BSCrim', 'BSHM', 'BSTM'];
+function student_email_is_valid(string $email): bool
+{
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return false;
+    $domain = substr(strrchr($email, '@'), 1);
+    return (bool) preg_match('/\A(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}\z/', $domain);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
@@ -42,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $reason = '';
                 if (count($row) !== 5) $reason = 'Expected five columns';
                 elseif (!preg_match('/\A[0-9]{7}-[0-9]\z/', $studentId)) $reason = 'Invalid student ID';
-                elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) $reason = 'Invalid email';
+                elseif (!student_email_is_valid($email)) $reason = 'Invalid email (use a domain such as gmail.com)';
                 elseif ($firstName === '' || $lastName === '' || $course === '') $reason = 'Name and course are required';
                 if ($reason !== '') {
                     $invalid++;
@@ -88,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim(is_string($_POST['email'] ?? null) ? $_POST['email'] : '');
             $course = trim(is_string($_POST['course'] ?? null) ? $_POST['course'] : '');
             if ($studentId === '' || $firstName === '' || $lastName === '' || $email === '' || !in_array($course, $courseOptions, true)) throw new RuntimeException('Please fill in all required fields and select a valid course.');
+            if (!student_email_is_valid($email)) throw new RuntimeException('Enter a valid email address with a domain ending, such as name@gmail.com.');
             if ($action === 'add') {
                 $statement = $database->prepare('INSERT INTO students (student_id, first_name, last_name, email, course) VALUES (?, ?, ?, ?, ?)');
                 $statement->execute([$studentId, $firstName, $lastName, $email, $course]);
@@ -152,14 +159,14 @@ admin_notice();
 </dialog>
 <section class="content-card form-card"><div class="section-heading"><h2>Add Student</h2></div>
     <form class="admin-form" method="post"><input type="hidden" name="action" value="add">
-        <label>Student ID<input name="student_id" required pattern="[0-9]{7}-[0-9]"></label><label>First Name<input name="first_name" required></label><label>Last Name<input name="last_name" required></label><label>Email<input name="email" type="email" required></label><label>Course<select name="course" required><option value="" disabled selected>Select course</option><?php foreach ($courseOptions as $courseOption): ?><option value="<?= h($courseOption) ?>"><?= h($courseOption) ?></option><?php endforeach; ?></select></label><button>Add Student</button>
+        <label>Student ID<input name="student_id" required pattern="[0-9]{7}-[0-9]"></label><label>First Name<input name="first_name" required></label><label>Last Name<input name="last_name" required></label><label>Email<input name="email" type="email" pattern="[^@\s]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}" title="Enter a valid email with a domain ending, such as name@gmail.com." required></label><label>Course<select name="course" required><option value="" disabled selected>Select course</option><?php foreach ($courseOptions as $courseOption): ?><option value="<?= h($courseOption) ?>"><?= h($courseOption) ?></option><?php endforeach; ?></select></label><button>Add Student</button>
     </form>
 </section>
 <dialog id="students-edit-modal" class="admin-modal" aria-labelledby="students-edit-title" data-open="<?= $editStudent ? 'true' : 'false' ?>">
     <div class="modal-header"><h2 id="students-edit-title"><i data-lucide="graduation-cap" aria-hidden="true"></i>Edit Student</h2><a class="modal-close" href="students.php" data-close-modal aria-label="Close Edit Student"><i data-lucide="x" aria-hidden="true"></i></a></div>
     <?php if ($savedEdit) admin_notice(); ?>
     <form class="admin-form record-edit-form" method="post"><input type="hidden" name="action" value="edit">
-        <label>Student ID<input name="student_id" required value="<?= h($editStudent['student_id'] ?? '') ?>" readonly></label><label>First Name<input name="first_name" required value="<?= h($editStudent['first_name'] ?? '') ?>" autofocus></label><label>Last Name<input name="last_name" required value="<?= h($editStudent['last_name'] ?? '') ?>"></label><label>Email<input name="email" type="email" required value="<?= h($editStudent['email'] ?? '') ?>"></label><label>Course<select name="course" required><option value="" disabled <?= !in_array($editStudent['course'] ?? '', $courseOptions, true) ? 'selected' : '' ?>>Select course</option><?php foreach ($courseOptions as $courseOption): ?><option value="<?= h($courseOption) ?>" <?= ($editStudent['course'] ?? '') === $courseOption ? 'selected' : '' ?>><?= h($courseOption) ?></option><?php endforeach; ?></select></label>
+        <label>Student ID<input name="student_id" required value="<?= h($editStudent['student_id'] ?? '') ?>" readonly></label><label>First Name<input name="first_name" required value="<?= h($editStudent['first_name'] ?? '') ?>" autofocus></label><label>Last Name<input name="last_name" required value="<?= h($editStudent['last_name'] ?? '') ?>"></label><label>Email<input name="email" type="email" pattern="[^@\s]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}" title="Enter a valid email with a domain ending, such as name@gmail.com." required value="<?= h($editStudent['email'] ?? '') ?>"></label><label>Course<select name="course" required><option value="" disabled <?= !in_array($editStudent['course'] ?? '', $courseOptions, true) ? 'selected' : '' ?>>Select course</option><?php foreach ($courseOptions as $courseOption): ?><option value="<?= h($courseOption) ?>" <?= ($editStudent['course'] ?? '') === $courseOption ? 'selected' : '' ?>><?= h($courseOption) ?></option><?php endforeach; ?></select></label>
         <div class="modal-actions"><button type="submit">Save Changes</button><a class="button-secondary" href="students.php" data-close-modal>Cancel</a></div>
     </form>
 </dialog>

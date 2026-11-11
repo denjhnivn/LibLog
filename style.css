@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
     --blue: #5c87f4;
@@ -1118,6 +1118,10 @@ button:disabled { opacity: .7; cursor: wait; }
 .admin-modal .modal-actions button { width: 180px; max-width: 100%; height: 44px; align-self: center; justify-self: center; border-radius: 8px; }
 .button-secondary { display: inline-flex; justify-content: center; align-items: center; height: 42px; padding: 0 18px; border: 1px solid #d7dfed; border-radius: 8px; color: var(--ink); font-size: .88rem; font-weight: 600; text-decoration: none; }
 .button-secondary:hover { background: #edf3ff; }
+.logs-export { height:34px; padding:0 12px; gap:7px; border:1px solid var(--blue); border-radius:8px; color:#fff; background:var(--blue); font-size:.78rem; line-height:1; box-shadow:none; }
+.logs-export svg { width:15px; height:15px; color:#fff; }
+.logs-export:hover { border-color:#4778df; color:#fff; background:#4778df; }
+.logs-export.is-disabled { opacity:.55; }
 @media (max-width: 760px) {
     .admin-body .computer-add-form { grid-template-columns: 1fr; }
     .computer-add-form > button { margin-top: 0; }

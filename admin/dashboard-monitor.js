@@ -29,7 +29,8 @@
         if (!nodes) { nodes = createCard(computer); cards.set(String(computer.pc_id), nodes); monitor.append(nodes.card); }
         const { card, number, status, student, studentId, timing, force, body } = nodes;
         card.className = `pcm-tile ${state.toLowerCase().replaceAll(' ', '-')}`;
-        number.textContent = `PC ${computer.pc_number}`; status.textContent = state;
+        const pcNumber = String(computer.pc_number || '').trim();
+        number.textContent = /^PC-/i.test(pcNumber) ? pcNumber : `PC-${pcNumber}`; status.textContent = state;
         const occupied = state === 'Occupied' && computer.student_id;
         if (occupied) {
             card.querySelector('.pcm-description')?.remove();
